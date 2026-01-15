@@ -40,6 +40,14 @@ BODY_PART_VIOLATIONS = {
 PPE_EQUIPMENT = ['helmet', 'face-mask', 'facemask', 'mask', 'glasses', 'goggles', 
                  'shoes', 'boots', 'safety-glasses', 'safety-vest', 'gloves']
 
+# Mapping from violation types to PPE equipment that would prevent the violation
+# If a person is detected wearing any of these PPE items, skip the corresponding violation
+VIOLATION_TO_PPE = {
+    'No Helmet': ['helmet'],
+    'No Face Mask': ['face-mask', 'facemask', 'mask'],
+    'No Safety Boots': ['shoes', 'boots']
+}
+
 
 class PersonTracker:
     """
@@ -211,8 +219,12 @@ class VideoPipeline:
         # Track metadata
         self.track_first_seen: Dict[int, int] = {}
         
-        # Violation capture cooldown
-        self.last_violation_capture: Dict[tuple, float] = {}
+        # Track which (track_id, vtype) pairs have been captured (one snapshot per person per violation type)
+        self.captured_violations: set = set()
+        
+        # Track PPE worn by each person (track_id -> set of PPE types)
+        # If PPE is detected, corresponding violations are skipped
+        self.person_worn_ppe: Dict[int, set] = {}
         
         # Detected PPE equipment for the equipment tab
         self.detected_equipment: List[dict] = []
@@ -233,7 +245,8 @@ class VideoPipeline:
         self.is_processing = False
         self.progress = 0.0
         self.track_first_seen = {}
-        self.last_violation_capture = {}
+        self.captured_violations = set()
+        self.person_worn_ppe = {}
         self.detected_equipment = []
         # Reset model
         self.model = YOLO(self.model_path)
@@ -261,13 +274,12 @@ class VideoPipeline:
         return any(ppe in class_lower or class_lower in ppe for ppe in PPE_EQUIPMENT)
     
     def _can_capture(self, track_id: int, vtype: str, ts: float) -> bool:
-        """Check cooldown."""
+        """Check if we should capture - only one snapshot per person per violation type."""
         key = (track_id, vtype)
-        last = self.last_violation_capture.get(key, -999)
-        if ts - last >= VIOLATION_CAPTURE_COOLDOWN:
-            self.last_violation_capture[key] = ts
-            return True
-        return False
+        if key in self.captured_violations:
+            return False  # Already captured this violation type for this person
+        self.captured_violations.add(key)
+        return True
     
     def _convert_to_browser_compatible(self, input_path: str, output_path: str) -> bool:
         """Convert video to browser-compatible format using ffmpeg."""
