@@ -47,6 +47,8 @@ export const getViolations = (params = {}) => {
     if (params.violationType) query.set('violation_type', params.violationType)
     if (params.reviewStatus) query.set('review_status', params.reviewStatus)
     if (params.minConfidence) query.set('min_confidence', params.minConfidence)
+    if (params.startDate) query.set('start_date', params.startDate)
+    if (params.endDate) query.set('end_date', params.endDate)
 
     return api.get(`/violations?${query.toString()}`)
 }

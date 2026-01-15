@@ -47,6 +47,9 @@ class Video(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
     
+    # Shift information (morning/evening/night)
+    shift = Column(String(20), default='morning')
+    
     # Relationships
     individuals = relationship("TrackedIndividual", back_populates="video", cascade="all, delete-orphan")
     

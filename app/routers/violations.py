@@ -32,6 +32,8 @@ async def list_violations(
     violation_type: Optional[str] = None,
     review_status: Optional[str] = None,
     min_confidence: Optional[float] = None,
+    start_date: Optional[str] = None,  # ISO format: YYYY-MM-DD
+    end_date: Optional[str] = None,    # ISO format: YYYY-MM-DD
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -43,6 +45,8 @@ async def list_violations(
     - violation_type: Filter by type
     - review_status: pending, confirmed, or rejected
     - min_confidence: Minimum detection confidence
+    - start_date: Filter violations detected on or after this date (YYYY-MM-DD)
+    - end_date: Filter violations detected on or before this date (YYYY-MM-DD)
     """
     query = select(Violation).join(TrackedIndividual)
     
@@ -58,6 +62,23 @@ async def list_violations(
         conditions.append(Violation.review_status == review_status)
     if min_confidence:
         conditions.append(Violation.confidence >= min_confidence)
+    
+    # Date range filters
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            conditions.append(Violation.detected_at >= start_dt)
+        except ValueError:
+            pass  # Invalid date format, skip filter
+    
+    if end_date:
+        try:
+            # End date should include the entire day
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            conditions.append(Violation.detected_at <= end_dt)
+        except ValueError:
+            pass  # Invalid date format, skip filter
     
     if conditions:
         query = query.where(and_(*conditions))

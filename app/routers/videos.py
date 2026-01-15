@@ -2,7 +2,7 @@
 Video upload and management endpoints.
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -27,6 +27,7 @@ router = APIRouter()
 async def upload_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    shift: str = Form(default="morning"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -61,13 +62,19 @@ async def upload_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
     
+    # Validate shift
+    valid_shifts = ['morning', 'evening', 'night']
+    if shift not in valid_shifts:
+        shift = 'morning'
+    
     # Create database record
     video = Video(
         filename=unique_filename,
         original_filename=file.filename,
         file_path=file_path,
         file_size=file_size,
-        status=ProcessingStatus.PENDING.value
+        status=ProcessingStatus.PENDING.value,
+        shift=shift
     )
     
     db.add(video)

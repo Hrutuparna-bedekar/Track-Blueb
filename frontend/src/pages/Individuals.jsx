@@ -7,9 +7,10 @@ import {
     TrendingUp,
     Clock,
     User,
-    RefreshCw
+    RefreshCw,
+    Image
 } from 'lucide-react'
-import { getIndividuals, getIndividual, analyzeIndividual } from '../services/api'
+import { getIndividuals, getIndividual, analyzeIndividual, getViolations } from '../services/api'
 
 function Individuals() {
     const { videoId } = useParams()
@@ -19,12 +20,17 @@ function Individuals() {
     const [selectedIndividual, setSelectedIndividual] = useState(null)
     const [analysis, setAnalysis] = useState(null)
     const [loadingAnalysis, setLoadingAnalysis] = useState(false)
+    const [violations, setViolations] = useState([])
 
     const fetchIndividuals = async () => {
         try {
             setLoading(true)
-            const res = await getIndividuals(videoId)
-            setIndividuals(res.data.items || [])
+            const [indRes, violRes] = await Promise.all([
+                getIndividuals(videoId),
+                getViolations({ videoId, pageSize: 100 })
+            ])
+            setIndividuals(indRes.data.items || [])
+            setViolations(violRes.data.items || [])
         } catch (err) {
             setError('Failed to load individuals')
             console.error(err)
@@ -131,6 +137,8 @@ function Individuals() {
                                 {individuals.map((ind) => {
                                     const risk = getRiskLevel(ind.risk_score)
                                     const isSelected = selectedIndividual?.id === ind.id
+                                    // Find snapshot for this person
+                                    const personViolation = violations.find(v => v.track_id === ind.track_id && v.image_path)
 
                                     return (
                                         <div
@@ -143,16 +151,31 @@ function Individuals() {
                                             }}
                                             onClick={() => handleSelectIndividual(ind)}
                                         >
-                                            <div
-                                                className="stat-icon primary"
-                                                style={{ width: 40, height: 40, flexShrink: 0 }}
-                                            >
-                                                <User size={20} />
-                                            </div>
+                                            {/* Snapshot or placeholder */}
+                                            {personViolation?.image_path ? (
+                                                <img
+                                                    src={personViolation.image_path}
+                                                    alt={`Person ${ind.track_id}`}
+                                                    style={{
+                                                        width: 48,
+                                                        height: 48,
+                                                        objectFit: 'cover',
+                                                        borderRadius: 8,
+                                                        flexShrink: 0
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div
+                                                    className="stat-icon primary"
+                                                    style={{ width: 48, height: 48, flexShrink: 0 }}
+                                                >
+                                                    <User size={20} />
+                                                </div>
+                                            )}
 
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-semibold">Track #{ind.track_id}</span>
+                                                    <span className="font-semibold">Person #{ind.track_id}</span>
                                                     {ind.total_violations >= 2 && (
                                                         <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
                                                             Repeat
@@ -203,13 +226,29 @@ function Individuals() {
                             </div>
                         ) : (
                             <div className="card-body">
-                                {/* Header */}
+                                {/* Header with Snapshot */}
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="stat-icon primary" style={{ width: 56, height: 56 }}>
-                                        <User size={28} />
-                                    </div>
+                                    {(() => {
+                                        const snapshot = violations.find(v => v.track_id === selectedIndividual.track_id && v.image_path)
+                                        return snapshot?.image_path ? (
+                                            <img
+                                                src={snapshot.image_path}
+                                                alt={`Person ${selectedIndividual.track_id}`}
+                                                style={{
+                                                    width: 64,
+                                                    height: 64,
+                                                    objectFit: 'cover',
+                                                    borderRadius: 12
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="stat-icon primary" style={{ width: 64, height: 64 }}>
+                                                <User size={32} />
+                                            </div>
+                                        )
+                                    })()}
                                     <div>
-                                        <h2 className="text-lg font-semibold">Track #{selectedIndividual.track_id}</h2>
+                                        <h2 className="text-lg font-semibold">Person #{selectedIndividual.track_id}</h2>
                                         <p className="text-muted text-sm">
                                             Tracked from {formatTime(selectedIndividual.first_seen_time)}
                                             to {formatTime(selectedIndividual.last_seen_time)}

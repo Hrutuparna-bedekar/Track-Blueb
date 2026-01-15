@@ -248,36 +248,69 @@ function VideoDetail() {
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Track ID</th>
+                                            <th>Person</th>
+                                            <th>Snapshot</th>
                                             <th>Violations</th>
                                             <th>Risk</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {individuals.slice(0, 5).map((ind) => (
-                                            <tr key={ind.id}>
-                                                <td>
-                                                    <span className="font-semibold">#{ind.track_id}</span>
-                                                </td>
-                                                <td>
-                                                    {ind.total_violations > 0 ? (
-                                                        <span className="badge badge-warning">
-                                                            {ind.total_violations}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted">0</span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <span className={`badge ${ind.risk_score >= 0.7 ? 'badge-danger' :
+                                        {individuals.slice(0, 5).map((ind) => {
+                                            // Find first violation image for this person
+                                            const personViolation = violations.find(v => v.track_id === ind.track_id && v.image_path)
+                                            return (
+                                                <tr key={ind.id}>
+                                                    <td>
+                                                        <span className="font-semibold">Person #{ind.track_id}</span>
+                                                    </td>
+                                                    <td>
+                                                        {personViolation?.image_path ? (
+                                                            <img
+                                                                src={personViolation.image_path}
+                                                                alt={`Person ${ind.track_id}`}
+                                                                style={{
+                                                                    width: 48,
+                                                                    height: 48,
+                                                                    objectFit: 'cover',
+                                                                    borderRadius: 6
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                style={{
+                                                                    width: 48,
+                                                                    height: 48,
+                                                                    background: 'var(--bg-tertiary)',
+                                                                    borderRadius: 6,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}
+                                                            >
+                                                                <Users size={20} className="text-muted" />
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {ind.total_violations > 0 ? (
+                                                            <span className="badge badge-warning">
+                                                                {ind.total_violations}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted">0</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`badge ${ind.risk_score >= 0.7 ? 'badge-danger' :
                                                             ind.risk_score >= 0.4 ? 'badge-warning' : 'badge-success'
-                                                        }`}>
-                                                        {ind.risk_score >= 0.7 ? 'High' :
-                                                            ind.risk_score >= 0.4 ? 'Medium' : 'Low'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                            }`}>
+                                                            {ind.risk_score >= 0.7 ? 'High' :
+                                                                ind.risk_score >= 0.4 ? 'Medium' : 'Low'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

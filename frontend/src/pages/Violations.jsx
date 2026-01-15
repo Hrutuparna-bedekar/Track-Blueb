@@ -9,9 +9,11 @@ import {
     RefreshCw,
     User,
     Image,
-    X
+    X,
+    FileText,
+    Video
 } from 'lucide-react'
-import { getViolations, reviewViolation, bulkReviewViolations, getViolationTypes } from '../services/api'
+import { getViolations, reviewViolation, bulkReviewViolations, getViolationTypes, getVideos } from '../services/api'
 
 function Violations() {
     const [searchParams, setSearchParams] = useSearchParams()
@@ -31,6 +33,10 @@ function Violations() {
         violationType: searchParams.get('violation_type') || '',
         videoId: searchParams.get('video_id') || ''
     })
+
+    // Tab state for summary view
+    const [showSummary, setShowSummary] = useState(false)
+    const [videoNames, setVideoNames] = useState({})  // video_id -> filename
 
     const fetchViolations = async () => {
         try {
@@ -61,9 +67,23 @@ function Violations() {
         }
     }
 
+    const fetchVideoNames = async () => {
+        try {
+            const res = await getVideos(1, 100)  // Get all videos
+            const names = {}
+            res.data.items.forEach(v => {
+                names[v.id] = v.original_filename
+            })
+            setVideoNames(names)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
     useEffect(() => {
         fetchViolations()
         fetchViolationTypes()
+        fetchVideoNames()
     }, [page, filters])
 
     const handleFilterChange = (key, value) => {
@@ -71,12 +91,17 @@ function Violations() {
         setPage(1)
 
         const params = new URLSearchParams(searchParams)
+        const paramMap = {
+            reviewStatus: 'review_status',
+            violationType: 'violation_type',
+            videoId: 'video_id'
+        }
+        const paramKey = paramMap[key] || key
+
         if (value) {
-            params.set(key === 'reviewStatus' ? 'review_status' :
-                key === 'violationType' ? 'violation_type' : 'video_id', value)
+            params.set(paramKey, value)
         } else {
-            params.delete(key === 'reviewStatus' ? 'review_status' :
-                key === 'violationType' ? 'violation_type' : 'video_id')
+            params.delete(paramKey)
         }
         setSearchParams(params)
     }
@@ -147,13 +172,26 @@ function Violations() {
         return `${mins}:${secs.toString().padStart(2, '0')}`
     }
 
-    // Group violations by person (track_id)
+    const formatDateTime = (isoString) => {
+        if (!isoString) return 'N/A'
+        const date = new Date(isoString)
+        return date.toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        })
+    }
+
+    // Group violations by video (video_id)
     const groupedViolations = violations.reduce((acc, v) => {
-        const key = `Video ${v.video_id} - Person ${v.track_id}`
-        if (!acc[key]) {
-            acc[key] = []
+        const videoName = videoNames[v.video_id] || `Video ${v.video_id}`
+        if (!acc[videoName]) {
+            acc[videoName] = { video_id: v.video_id, violations: [] }
         }
-        acc[key].push(v)
+        acc[videoName].violations.push(v)
         return acc
     }, {})
 
@@ -232,11 +270,123 @@ function Violations() {
                                     </button>
                                 </div>
                             )}
+
+                            {/* Violator Summary Toggle */}
+                            <button
+                                className={`btn ${showSummary ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                                onClick={() => setShowSummary(!showSummary)}
+                                style={{ marginLeft: 'auto' }}
+                            >
+                                <FileText size={14} />
+                                {showSummary ? 'Hide Summary' : 'View Violator Summary'}
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Bulk Actions */}
+                {/* Violator Summary Section */}
+                {showSummary && (
+                    <div className="card mb-6" style={{ borderColor: 'var(--success)' }}>
+                        <div className="card-header">
+                            <h3 className="card-title" style={{ color: 'var(--success)' }}>
+                                <CheckCircle size={18} style={{ marginRight: 8 }} />
+                                Confirmed Violators Summary
+                            </h3>
+                        </div>
+                        <div className="card-body">
+                            {(() => {
+                                // Get unique persons with confirmed violations
+                                const confirmedViolations = violations.filter(v => v.review_status === 'confirmed')
+                                const personMap = new Map()
+
+                                confirmedViolations.forEach(v => {
+                                    const key = `${v.video_id}-${v.track_id}`
+                                    if (!personMap.has(key)) {
+                                        personMap.set(key, {
+                                            video_id: v.video_id,
+                                            track_id: v.track_id,
+                                            image_path: v.image_path,
+                                            violations: [],
+                                            violation_types: new Set()
+                                        })
+                                    }
+                                    const person = personMap.get(key)
+                                    person.violations.push(v)
+                                    person.violation_types.add(v.violation_type)
+                                })
+
+                                const violators = Array.from(personMap.values())
+
+                                if (violators.length === 0) {
+                                    return (
+                                        <div className="text-center text-muted py-4">
+                                            No confirmed violators yet. Review violations above to confirm them.
+                                        </div>
+                                    )
+                                }
+
+                                return (
+                                    <div className="table-container">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Person</th>
+                                                    <th>Snapshot</th>
+                                                    <th>Violations</th>
+                                                    <th>Count</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {violators.map((person, idx) => (
+                                                    <tr key={idx}>
+                                                        <td>
+                                                            <span className="font-semibold">
+                                                                Person #{person.track_id}
+                                                            </span>
+                                                            <div className="text-muted text-sm">
+                                                                Video #{person.video_id}
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            {person.image_path ? (
+                                                                <img
+                                                                    src={person.image_path}
+                                                                    alt={`Person ${person.track_id}`}
+                                                                    style={{
+                                                                        width: 48,
+                                                                        height: 48,
+                                                                        objectFit: 'cover',
+                                                                        borderRadius: 6
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <User size={24} className="text-muted" />
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {Array.from(person.violation_types).map((type, i) => (
+                                                                    <span key={i} className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
+                                                                        {type}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span className="badge badge-warning">
+                                                                {person.violations.length}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )
+                            })()}
+                        </div>
+                    </div>
+                )}
                 {selectedViolations.length > 0 && (
                     <div className="card mb-6" style={{ borderColor: 'var(--accent-primary)' }}>
                         <div className="card-body flex items-center gap-4">
@@ -294,16 +444,16 @@ function Violations() {
                     </div>
                 ) : (
                     <>
-                        {/* Grouped by Person */}
-                        {Object.entries(groupedViolations).map(([personKey, personViolations]) => (
-                            <div key={personKey} className="card mb-6">
+                        {/* Grouped by Video */}
+                        {Object.entries(groupedViolations).map(([videoName, videoData]) => (
+                            <div key={videoName} className="card mb-6">
                                 <div className="card-header">
                                     <div className="flex items-center gap-2">
-                                        <User size={18} />
-                                        <h3 className="card-title">{personKey}</h3>
+                                        <Video size={18} style={{ color: 'var(--accent-primary)' }} />
+                                        <h3 className="card-title">{videoName}</h3>
                                     </div>
                                     <span className="badge badge-neutral">
-                                        {personViolations.length} violations
+                                        {videoData.violations.length} violations
                                     </span>
                                 </div>
                                 <div className="card-body">
@@ -312,7 +462,7 @@ function Violations() {
                                         gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                                         gap: '1rem'
                                     }}>
-                                        {personViolations.map(violation => (
+                                        {videoData.violations.map(violation => (
                                             <div
                                                 key={violation.id}
                                                 className="card"
@@ -367,7 +517,8 @@ function Violations() {
 
                                                     {/* Details */}
                                                     <div className="text-sm text-muted mb-3">
-                                                        <div>Time: {formatTimestamp(violation.timestamp)}</div>
+                                                        <div>Detected: {formatDateTime(violation.detected_at)}</div>
+                                                        <div>Video Time: {formatTimestamp(violation.timestamp)}</div>
                                                         <div>Confidence: {Math.round(violation.confidence * 100)}%</div>
                                                     </div>
 
@@ -472,6 +623,53 @@ function Violations() {
                         }}
                     >
                         <X size={24} />
+                    </button>
+                </div>
+            )}
+
+            {/* Floating Action Buttons for Multi-Select */}
+            {selectedViolations.length > 0 && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        right: 24,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 12,
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                        zIndex: 900
+                    }}
+                >
+                    <div className="text-center font-semibold" style={{ color: 'var(--accent-primary)' }}>
+                        {selectedViolations.length} Selected
+                    </div>
+                    <button
+                        className="btn btn-success"
+                        onClick={() => handleBulkReview(true)}
+                        disabled={submitting}
+                    >
+                        <CheckCircle size={18} />
+                        Confirm All
+                    </button>
+                    <button
+                        className="btn btn-danger"
+                        onClick={() => handleBulkReview(false)}
+                        disabled={submitting}
+                    >
+                        <XCircle size={18} />
+                        Reject All
+                    </button>
+                    <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setSelectedViolations([])}
+                    >
+                        Clear
                     </button>
                 </div>
             )}
