@@ -5,7 +5,6 @@ import Videos from './pages/Videos'
 import Violations from './pages/Violations'
 import Individuals from './pages/Individuals'
 import VideoDetail from './pages/VideoDetail'
-import Equipment from './pages/Equipment'
 
 function App() {
     return (
@@ -17,7 +16,6 @@ function App() {
                     <Route path="videos" element={<Videos />} />
                     <Route path="videos/:videoId" element={<VideoDetail />} />
                     <Route path="violations" element={<Violations />} />
-                    <Route path="equipment" element={<Equipment />} />
                     <Route path="individuals/:videoId" element={<Individuals />} />
                 </Route>
             </Routes>

@@ -588,19 +588,26 @@ class VideoPipeline:
             cv2.putText(annotated, label, (px1, py1 - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         
-        # PROCESS PPE FIRST - Associate PPE with nearest person BEFORE processing violations
-        # This ensures we know what PPE each person is wearing before checking for violations
+        # PROCESS PPE FIRST - Associate PPE with person ONLY if PPE is inside person's bbox
+        # This is stricter than find_closest_person to prevent cross-person PPE association
         for ppe_bbox, cls_name, conf in ppe_items:
             ex1, ey1, ex2, ey2 = ppe_bbox
             cv2.rectangle(annotated, (ex1, ey1), (ex2, ey2), (255, 0, 0), 2)
             cv2.putText(annotated, cls_name, (ex1, ey1 - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
             
-            # Associate PPE with nearest person
-            closest = find_closest_person(ppe_bbox)
-            if closest:
-                _, ppe_track_id = closest
-                self._record_person_ppe(ppe_track_id, cls_name)
+            # Associate PPE with person ONLY if PPE bbox center is INSIDE person bbox
+            # This is stricter to avoid cross-contamination of PPE between nearby persons
+            ppe_cx, ppe_cy = (ex1 + ex2) / 2, (ey1 + ey2) / 2  # PPE center
+            
+            for person_bbox, person_tid, person_conf in persons:
+                px1, py1, px2, py2 = person_bbox
+                # Check if PPE center is inside person bbox (with small tolerance)
+                tolerance = 30  # pixels
+                if (px1 - tolerance <= ppe_cx <= px2 + tolerance and 
+                    py1 - tolerance <= ppe_cy <= py2 + tolerance):
+                    self._record_person_ppe(person_tid, cls_name)
+                    break  # Only associate with one person
         
         # THEN Process violations - skip if person has worn corresponding PPE
         for vbox, vtype, conf in violations:

@@ -16,7 +16,6 @@ function Layout() {
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/videos', label: 'Videos', icon: Video },
         { path: '/violations', label: 'Violations', icon: AlertTriangle },
-        { path: '/equipment', label: 'Equipment', icon: HardHat },
     ]
 
     return (
