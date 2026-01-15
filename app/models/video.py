@@ -18,6 +18,13 @@ class ProcessingStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class Shift(str, enum.Enum):
+    """Time-of-day shifts for video recording."""
+    MORNING = "morning"
+    EVENING = "evening"
+    NIGHT = "night"
+
+
 class Video(Base):
     """Model for uploaded video files."""
     
@@ -43,12 +50,12 @@ class Video(Base):
     total_individuals = Column(Integer, default=0)
     total_violations = Column(Integer, default=0)
     
+    # Time-of-day shift when video was recorded
+    shift = Column(String(50), nullable=True)  # morning, evening, night
+    
     # Timestamps
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     processed_at = Column(DateTime, nullable=True)
-    
-    # Shift information (morning/evening/night)
-    shift = Column(String(20), default='morning')
     
     # Relationships
     individuals = relationship("TrackedIndividual", back_populates="video", cascade="all, delete-orphan")

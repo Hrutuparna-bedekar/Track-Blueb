@@ -12,7 +12,7 @@ from app.models.video import Video, ProcessingStatus
 from app.models.individual import TrackedIndividual
 from app.models.violation import Violation
 from app.schemas.dashboard import (
-    DashboardStats, RepeatOffendersResponse, RepeatOffender
+    DashboardStats, RepeatOffendersResponse, RepeatOffender, RecentEvent
 )
 
 router = APIRouter()
@@ -23,13 +23,15 @@ async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get overall dashboard statistics.
+    Get comprehensive dashboard statistics with analytics.
     
     Returns:
-    - Total videos, individuals, violations
-    - Confirmed/rejected/pending violation counts
-    - Repeat offenders count
-    - Violations by type breakdown
+    - Total counts and compliance rates
+    - PPE-wise violation breakdown
+    - Shift-based analysis
+    - Confidence metrics
+    - Daily trends
+    - Recent events feed
     """
     # Total videos
     videos_result = await db.execute(select(func.count()).select_from(Video))
@@ -47,6 +49,17 @@ async def get_dashboard_stats(
         select(func.count()).select_from(TrackedIndividual)
     )
     total_individuals = individuals_result.scalar() or 0
+    
+    # Individuals with at least one violation
+    violators_result = await db.execute(
+        select(func.count()).select_from(TrackedIndividual)
+        .where(TrackedIndividual.total_violations > 0)
+    )
+    total_violators = violators_result.scalar() or 0
+    
+    # Compliance rates
+    compliance_rate = ((total_individuals - total_violators) / total_individuals * 100) if total_individuals > 0 else 100.0
+    violation_rate = (total_violators / total_individuals * 100) if total_individuals > 0 else 0.0
     
     # Total violations
     violations_result = await db.execute(
@@ -78,12 +91,34 @@ async def get_dashboard_stats(
     )
     repeat_offenders_count = repeat_result.scalar() or 0
     
-    # Violations by type
+    # Violations by type (PPE-wise)
     type_result = await db.execute(
         select(Violation.violation_type, func.count())
         .group_by(Violation.violation_type)
     )
     violations_by_type = {row[0]: row[1] for row in type_result.all()}
+    
+    # Violations by shift
+    shift_result = await db.execute(
+        select(Video.shift, func.count(Violation.id))
+        .join(TrackedIndividual, TrackedIndividual.video_id == Video.id)
+        .join(Violation, Violation.individual_id == TrackedIndividual.id)
+        .where(Video.shift.isnot(None))
+        .group_by(Video.shift)
+    )
+    violations_by_shift = {row[0]: row[1] for row in shift_result.all()}
+    
+    # Confidence metrics
+    confidence_result = await db.execute(
+        select(func.avg(Violation.confidence))
+    )
+    avg_confidence = confidence_result.scalar() or 0.0
+    
+    low_conf_result = await db.execute(
+        select(func.count()).select_from(Violation)
+        .where(Violation.confidence < 0.5)
+    )
+    low_confidence_count = low_conf_result.scalar() or 0
     
     # Recent videos (last 24 hours)
     yesterday = datetime.utcnow() - timedelta(days=1)
@@ -92,6 +127,40 @@ async def get_dashboard_stats(
         .where(Video.uploaded_at >= yesterday)
     )
     recent_videos_count = recent_result.scalar() or 0
+    
+    # Daily trends (last 7 days)
+    daily_violations = []
+    for i in range(6, -1, -1):
+        day = datetime.utcnow().date() - timedelta(days=i)
+        day_start = datetime.combine(day, datetime.min.time())
+        day_end = day_start + timedelta(days=1)
+        
+        day_result = await db.execute(
+            select(func.count()).select_from(Violation)
+            .where(and_(Violation.detected_at >= day_start, Violation.detected_at < day_end))
+        )
+        count = day_result.scalar() or 0
+        daily_violations.append({"date": day.strftime("%Y-%m-%d"), "count": count})
+    
+    # Recent events feed (last 10)
+    events_result = await db.execute(
+        select(Violation, TrackedIndividual, Video)
+        .join(TrackedIndividual, Violation.individual_id == TrackedIndividual.id)
+        .join(Video, TrackedIndividual.video_id == Video.id)
+        .order_by(Violation.detected_at.desc())
+        .limit(10)
+    )
+    recent_events = []
+    for violation, individual, video in events_result.all():
+        recent_events.append(RecentEvent(
+            id=violation.id,
+            person_id=individual.track_id,
+            video_name=video.original_filename,
+            violation_type=violation.violation_type,
+            confidence=violation.confidence,
+            detected_at=violation.detected_at,
+            image_path=violation.image_path
+        ))
     
     return DashboardStats(
         total_videos=total_videos,
@@ -102,8 +171,15 @@ async def get_dashboard_stats(
         pending_violations=pending_violations,
         repeat_offenders_count=repeat_offenders_count,
         videos_processing=videos_processing,
+        compliance_rate=round(compliance_rate, 1),
+        violation_rate=round(violation_rate, 1),
         violations_by_type=violations_by_type,
-        recent_videos_count=recent_videos_count
+        violations_by_shift=violations_by_shift,
+        avg_detection_confidence=round(avg_confidence, 2),
+        low_confidence_count=low_confidence_count,
+        recent_videos_count=recent_videos_count,
+        daily_violations=daily_violations,
+        recent_events=recent_events
     )
 
 

@@ -27,7 +27,7 @@ router = APIRouter()
 async def upload_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    shift: str = Form(default="morning"),
+    shift: Optional[str] = Form(None),  # morning, evening, night
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -62,11 +62,6 @@ async def upload_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
     
-    # Validate shift
-    valid_shifts = ['morning', 'evening', 'night']
-    if shift not in valid_shifts:
-        shift = 'morning'
-    
     # Create database record
     video = Video(
         filename=unique_filename,
@@ -74,7 +69,7 @@ async def upload_video(
         file_path=file_path,
         file_size=file_size,
         status=ProcessingStatus.PENDING.value,
-        shift=shift
+        shift=shift  # morning, evening, night
     )
     
     db.add(video)

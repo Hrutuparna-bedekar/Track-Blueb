@@ -14,9 +14,12 @@ export const getRepeatOffenders = (minViolations = 2) =>
 export const getQuickSummary = () => api.get('/dashboard/summary')
 
 // Videos
-export const uploadVideo = (file, onProgress) => {
+export const uploadVideo = (file, onProgress, shift = null) => {
     const formData = new FormData()
     formData.append('file', file)
+    if (shift) {
+        formData.append('shift', shift)
+    }
 
     return api.post('/videos/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
