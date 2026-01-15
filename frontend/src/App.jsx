@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Videos from './pages/Videos'
 import Violations from './pages/Violations'
@@ -8,18 +10,20 @@ import VideoDetail from './pages/VideoDetail'
 
 function App() {
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<Layout />}>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="videos" element={<Videos />} />
-                    <Route path="videos/:videoId" element={<VideoDetail />} />
-                    <Route path="violations" element={<Violations />} />
-                    <Route path="individuals/:videoId" element={<Individuals />} />
-                </Route>
-            </Routes>
-        </BrowserRouter>
+        <ThemeProvider>
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={<Landing />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="videos" element={<Videos />} />
+                        <Route path="videos/:videoId" element={<VideoDetail />} />
+                        <Route path="violations" element={<Violations />} />
+                        <Route path="individuals/:videoId" element={<Individuals />} />
+                    </Route>
+                </Routes>
+            </BrowserRouter>
+        </ThemeProvider>
     )
 }
 

@@ -1,65 +1,55 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import {
-    LayoutDashboard,
-    Video,
-    AlertTriangle,
-    Users,
-    Shield,
-    Settings,
-    HardHat
-} from 'lucide-react'
+import { Sun, Moon, ArrowRight } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 function Layout() {
+    const { theme, toggleTheme } = useTheme()
     const location = useLocation()
+    const isLandingPage = location.pathname === '/'
 
     const navItems = [
-        { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/videos', label: 'Videos', icon: Video },
-        { path: '/violations', label: 'Violations', icon: AlertTriangle },
+        { path: '/dashboard', label: 'Dashboard' },
+        { path: '/videos', label: 'Videos' },
+        { path: '/violations', label: 'Violations' },
     ]
 
     return (
         <div className="app-container">
-            {/* Sidebar */}
-            <aside className="sidebar">
-                <div className="sidebar-header">
-                    <div className="sidebar-logo">
-                        <div className="sidebar-logo-icon">
-                            <Shield size={24} />
-                        </div>
-                        <div>
-                            <div className="sidebar-logo-text">VioTrack</div>
-                            <div className="sidebar-logo-subtitle">Admin Panel</div>
-                        </div>
-                    </div>
+            {/* Floating Navbar */}
+            <nav className="navbar">
+                <NavLink to="/" className="navbar-brand">
+                    <span className="navbar-brand-text">VioTrack</span>
+                </NavLink>
+
+                <div className="navbar-nav">
+                    {navItems.map((item) => (
+                        <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className={({ isActive }) =>
+                                `nav-link ${isActive ? 'active' : ''}`
+                            }
+                        >
+                            {item.label}
+                        </NavLink>
+                    ))}
                 </div>
 
-                <nav className="sidebar-nav">
-                    <div className="nav-section">
-                        <div className="nav-section-title">Main</div>
-                        {navItems.map((item) => (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                className={({ isActive }) =>
-                                    `nav-link ${isActive ? 'active' : ''}`
-                                }
-                            >
-                                <item.icon className="nav-link-icon" size={20} />
-                                {item.label}
-                            </NavLink>
-                        ))}
-                    </div>
-
-                    <div className="nav-section">
-                        <div className="nav-section-title">System</div>
-                        <NavLink to="/settings" className="nav-link">
-                            <Settings className="nav-link-icon" size={20} />
-                            Settings
+                <div className="navbar-actions">
+                    <button
+                        className="theme-toggle"
+                        onClick={toggleTheme}
+                        aria-label="Toggle theme"
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    {isLandingPage && (
+                        <NavLink to="/dashboard" className="btn btn-primary btn-sm">
+                            Get Started <ArrowRight size={14} />
                         </NavLink>
-                    </div>
-                </nav>
-            </aside>
+                    )}
+                </div>
+            </nav>
 
             {/* Main Content */}
             <main className="main-content">
