@@ -259,12 +259,39 @@ function Individuals() {
                                             <div className="flex items-center justify-between">
                                                 <span className="text-muted">Risk Level</span>
                                                 <span className={`badge badge-${analysis.risk_level === 'high' ? 'danger' :
-                                                        analysis.risk_level === 'medium' ? 'warning' : 'success'
+                                                    analysis.risk_level === 'medium' ? 'warning' : 'success'
                                                     }`}>
                                                     {analysis.risk_level.charAt(0).toUpperCase() + analysis.risk_level.slice(1)}
                                                 </span>
                                             </div>
                                         </div>
+
+                                        {/* Worn Equipment Section */}
+                                        {selectedIndividual.worn_equipment?.length > 0 && (
+                                            <>
+                                                <h4 className="font-semibold mt-6 mb-3" style={{ color: 'var(--success)' }}>
+                                                    ✓ Worn Equipment (PPE Detected)
+                                                </h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedIndividual.worn_equipment.map((item, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="badge badge-success"
+                                                            style={{
+                                                                fontSize: '0.75rem',
+                                                                padding: '6px 12px',
+                                                                textTransform: 'capitalize'
+                                                            }}
+                                                        >
+                                                            {item}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <p className="text-muted text-sm mt-2" style={{ fontSize: '0.75rem' }}>
+                                                    PPE items detected on this person. Violations for these items are skipped.
+                                                </p>
+                                            </>
+                                        )}
 
                                         {/* Timeline */}
                                         {analysis.violation_timeline?.length > 0 && (
@@ -282,7 +309,7 @@ function Individuals() {
                                                             </span>
                                                             <span className="flex-1">{item.type}</span>
                                                             <span className={`badge ${item.status === 'confirmed' ? 'badge-success' :
-                                                                    item.status === 'rejected' ? 'badge-danger' : 'badge-warning'
+                                                                item.status === 'rejected' ? 'badge-danger' : 'badge-warning'
                                                                 }`} style={{ fontSize: '0.65rem' }}>
                                                                 {item.status}
                                                             </span>

@@ -40,6 +40,9 @@ class TrackedIndividual(Base):
     # Risk assessment
     risk_score = Column(Float, default=0.0)  # Based on violation frequency/severity
     
+    # PPE worn by this individual (comma-separated list)
+    worn_equipment = Column(String, default="")  # e.g., "helmet,gloves,boots"
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

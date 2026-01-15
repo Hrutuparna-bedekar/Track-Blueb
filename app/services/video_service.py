@@ -112,7 +112,14 @@ async def save_processing_results(
     # Create tracked individuals
     individual_map = {}  # track_id -> TrackedIndividual
     
+    # Get worn PPE data from result (if available)
+    person_worn_ppe = result.person_worn_ppe or {}
+    
     for profile in result.individual_profiles.values():
+        # Get worn equipment for this person (convert set to comma-separated string)
+        worn_ppe_set = person_worn_ppe.get(profile.track_id, set())
+        worn_equipment_str = ",".join(sorted(worn_ppe_set)) if worn_ppe_set else ""
+        
         individual = TrackedIndividual(
             video_id=video.id,
             track_id=profile.track_id,
@@ -124,7 +131,8 @@ async def save_processing_results(
             total_violations=len(profile.violations),
             confirmed_violations=0,
             rejected_violations=0,
-            risk_score=profile.risk_score
+            risk_score=profile.risk_score,
+            worn_equipment=worn_equipment_str
         )
         db.add(individual)
         await db.flush()

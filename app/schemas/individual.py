@@ -28,6 +28,7 @@ class IndividualResponse(BaseModel):
     rejected_violations: int = 0
     pending_violations: int = 0
     risk_score: float = 0.0
+    worn_equipment: List[str] = []  # PPE items worn by this person
     created_at: datetime
     
     class Config:

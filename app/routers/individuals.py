@@ -42,6 +42,8 @@ async def list_individuals(
     items = []
     for ind in individuals:
         pending = ind.total_violations - ind.confirmed_violations - ind.rejected_violations
+        # Parse worn_equipment from comma-separated string to list
+        worn_list = [e.strip() for e in (ind.worn_equipment or "").split(",") if e.strip()]
         items.append(IndividualResponse(
             id=ind.id,
             video_id=ind.video_id,
@@ -56,6 +58,7 @@ async def list_individuals(
             rejected_violations=ind.rejected_violations,
             pending_violations=pending,
             risk_score=ind.risk_score,
+            worn_equipment=worn_list,
             created_at=ind.created_at
         ))
     
@@ -109,6 +112,9 @@ async def get_individual(
     
     pending = individual.total_violations - individual.confirmed_violations - individual.rejected_violations
     
+    # Parse worn_equipment from comma-separated string to list
+    worn_list = [e.strip() for e in (individual.worn_equipment or "").split(",") if e.strip()]
+    
     return IndividualDetailResponse(
         id=individual.id,
         video_id=individual.video_id,
@@ -123,6 +129,7 @@ async def get_individual(
         rejected_violations=individual.rejected_violations,
         pending_violations=pending,
         risk_score=individual.risk_score,
+        worn_equipment=worn_list,
         created_at=individual.created_at,
         violations=violation_summaries
     )

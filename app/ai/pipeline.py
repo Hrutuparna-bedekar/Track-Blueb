@@ -180,6 +180,7 @@ class ProcessingResultSimple:
     height: int
     individual_profiles: dict
     violations: list
+    person_worn_ppe: dict = None  # track_id -> set of PPE items worn
     annotated_video_path: str = None
     error_message: Optional[str] = None
 
@@ -280,6 +281,33 @@ class VideoPipeline:
             return False  # Already captured this violation type for this person
         self.captured_violations.add(key)
         return True
+    
+    def _should_skip_violation(self, track_id: int, violation_type: str) -> bool:
+        """
+        Check if violation should be skipped because person has worn corresponding PPE.
+        
+        If a person is detected wearing PPE at any point, they don't get violations
+        for that missing PPE type.
+        """
+        worn_ppe = self.person_worn_ppe.get(track_id, set())
+        required_ppe = VIOLATION_TO_PPE.get(violation_type, [])
+        
+        # If person has worn any of the PPE that would prevent this violation, skip it
+        for ppe in required_ppe:
+            if ppe in worn_ppe:
+                logger.debug(f"Skipping {violation_type} for Person-{track_id}: detected wearing {ppe}")
+                return True
+        return False
+    
+    def _record_person_ppe(self, track_id: int, ppe_type: str):
+        """Record that a person has been detected wearing a specific PPE item."""
+        if track_id not in self.person_worn_ppe:
+            self.person_worn_ppe[track_id] = set()
+        
+        ppe_lower = ppe_type.lower()
+        if ppe_lower not in self.person_worn_ppe[track_id]:
+            self.person_worn_ppe[track_id].add(ppe_lower)
+            logger.info(f"PPE Detected: Person-{track_id} wearing {ppe_type}")
     
     def _convert_to_browser_compatible(self, input_path: str, output_path: str) -> bool:
         """Convert video to browser-compatible format using ffmpeg."""
@@ -434,7 +462,9 @@ class VideoPipeline:
                 success=True, total_frames=total_frames, processed_frames=processed,
                 fps=fps, duration=duration, width=width, height=height,
                 individual_profiles={tid: p for tid, p in profiles.items()},
-                violations=violations, annotated_video_path=annotated_path
+                violations=violations, 
+                person_worn_ppe=self.person_worn_ppe.copy(),
+                annotated_video_path=annotated_path
             )
             
         except Exception as e:
@@ -558,7 +588,21 @@ class VideoPipeline:
             cv2.putText(annotated, label, (px1, py1 - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         
-        # SECOND PASS: Process violations and associate with closest person
+        # PROCESS PPE FIRST - Associate PPE with nearest person BEFORE processing violations
+        # This ensures we know what PPE each person is wearing before checking for violations
+        for ppe_bbox, cls_name, conf in ppe_items:
+            ex1, ey1, ex2, ey2 = ppe_bbox
+            cv2.rectangle(annotated, (ex1, ey1), (ex2, ey2), (255, 0, 0), 2)
+            cv2.putText(annotated, cls_name, (ex1, ey1 - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            
+            # Associate PPE with nearest person
+            closest = find_closest_person(ppe_bbox)
+            if closest:
+                _, ppe_track_id = closest
+                self._record_person_ppe(ppe_track_id, cls_name)
+        
+        # THEN Process violations - skip if person has worn corresponding PPE
         for vbox, vtype, conf in violations:
             vx1, vy1, vx2, vy2 = vbox
             
@@ -571,6 +615,10 @@ class VideoPipeline:
                 track_id = 1
                 if track_id not in self.track_first_seen:
                     self.track_first_seen[track_id] = frame_num
+            
+            # Check if this violation should be skipped because person has worn corresponding PPE
+            if self._should_skip_violation(track_id, vtype):
+                continue  # Skip this violation - person has worn the required PPE
             
             # Draw violation box (RED)
             cv2.rectangle(annotated, (vx1, vy1), (vx2, vy2), (0, 0, 255), 3)
@@ -606,13 +654,6 @@ class VideoPipeline:
                 )
                 self.aggregator.profiles[track_id].add_violation(record)
                 logger.info(f"VIOLATION: Person-{track_id} - {vtype}")
-        
-        # Draw PPE equipment (BLUE)
-        for ppe_bbox, cls_name, conf in ppe_items:
-            ex1, ey1, ex2, ey2 = ppe_bbox
-            cv2.rectangle(annotated, (ex1, ey1), (ex2, ey2), (255, 0, 0), 2)
-            cv2.putText(annotated, cls_name, (ex1, ey1 - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         
         # Frame info overlay
         active_persons = len([p for p in persons])
