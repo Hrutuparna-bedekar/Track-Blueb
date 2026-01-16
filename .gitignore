@@ -7,3 +7,4 @@ violation_tracking.db
 violation_images/
 uploads/
 runs/
+ppe_model.pt
