@@ -124,18 +124,18 @@ async def get_dashboard_stats(
     )
     low_confidence_count = low_conf_result.scalar() or 0
     
-    # Recent videos (last 24 hours)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    # Recent videos (last 24 hours) - use local time
+    yesterday = datetime.now() - timedelta(days=1)
     recent_result = await db.execute(
         select(func.count()).select_from(Video)
         .where(Video.uploaded_at >= yesterday)
     )
     recent_videos_count = recent_result.scalar() or 0
     
-    # Daily trends (last 7 days)
+    # Daily trends (last 7 days) - use local time for proper date sync
     daily_violations = []
     for i in range(6, -1, -1):
-        day = datetime.utcnow().date() - timedelta(days=i)
+        day = datetime.now().date() - timedelta(days=i)
         day_start = datetime.combine(day, datetime.min.time())
         day_end = day_start + timedelta(days=1)
         
@@ -147,7 +147,9 @@ async def get_dashboard_stats(
             .where(Video.is_reviewed == 1)
         )
         count = day_result.scalar() or 0
-        daily_violations.append({"date": day.strftime("%Y-%m-%d"), "count": count})
+        # Include day name for frontend display
+        day_name = day.strftime("%a")  # Mon, Tue, Wed, etc.
+        daily_violations.append({"date": day.strftime("%Y-%m-%d"), "day": day_name, "count": count})
     
     # Recent events feed (last 10)
     events_result = await db.execute(
@@ -187,9 +189,9 @@ async def get_dashboard_stats(
     # Real data only for correlation chart requested by user
 
 
-    # PPE Trends with Dummy Data Injection for Tue/Wed/Thu as requested
+    # PPE Trends - use local time for proper date sync
     ppe_trends = []
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
     for i in range(29, -1, -1):
         date_obj = today - timedelta(days=i)
         date_str = date_obj.strftime("%Y-%m-%d")

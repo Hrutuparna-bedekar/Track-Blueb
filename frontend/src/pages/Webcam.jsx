@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
     Camera, CameraOff, AlertTriangle, Users, Shield, Play, Square,
-    CheckCircle, XCircle, RefreshCw, Image, User, ArrowLeft, Clock
+    CheckCircle, XCircle, RefreshCw, Image, User, ArrowLeft, Clock, Save, ExternalLink
 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { saveWebcamSession } from '../services/api'
 
 function Webcam() {
     const { t } = useLanguage()
+    const navigate = useNavigate()
     const [isStreaming, setIsStreaming] = useState(false)
     const [error, setError] = useState(null)
     const [stats, setStats] = useState({
@@ -22,6 +25,12 @@ function Webcam() {
     const [reviewStatus, setReviewStatus] = useState({})
     const [expandedImage, setExpandedImage] = useState(null)
     const [personPpe, setPersonPpe] = useState({}) // track_id -> [ppe items]
+
+    // Session save state
+    const [isSaving, setIsSaving] = useState(false)
+    const [saveSuccess, setSaveSuccess] = useState(null)
+    const [recordingStartTime, setRecordingStartTime] = useState(null)
+    const [sessionId, setSessionId] = useState(null)
 
     // Tab state for review (like video section)
     const [activeTab, setActiveTab] = useState('violations') // 'individuals' | 'violations'
@@ -62,8 +71,20 @@ function Webcam() {
             setReviewStatus({})
             setSelectedIndividual(null)
             setPersonPpe({})
+            setSaveSuccess(null)
             violationsRef.current = []
             ppeRef.current = {}
+
+            // Capture recording start time (local format, not UTC) and session ID
+            const now = new Date()
+            const localTimestamp = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + 'T' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0')
+            setRecordingStartTime(localTimestamp)
+            setSessionId(Math.random().toString(36).substring(2, 10))
 
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
@@ -169,6 +190,70 @@ function Webcam() {
 
     const handleReview = (violationId, isConfirmed) => {
         setReviewStatus(prev => ({ ...prev, [violationId]: isConfirmed ? 'confirmed' : 'rejected' }))
+    }
+
+    // Check if all violations are reviewed
+    const allReviewed = sessionViolations.length > 0 &&
+        sessionViolations.every(v => reviewStatus[v.id] === 'confirmed' || reviewStatus[v.id] === 'rejected')
+
+    // Handle finish reviewing - save to database
+    const handleFinishReviewing = async () => {
+        if (isSaving) return
+
+        try {
+            setIsSaving(true)
+            setError(null)
+
+            // Build violations data with review status
+            const violationsData = sessionViolations.map(v => ({
+                id: v.id,
+                person_id: v.person_id,
+                type: v.type,
+                confidence: v.confidence,
+                timestamp: v.timestamp,
+                frame_num: v.frame_num || 0,
+                image_path: v.image_path,
+                review_status: reviewStatus[v.id] || 'pending'
+            }))
+
+            // Build individuals data
+            const individualsData = individuals.map(ind => ({
+                person_id: ind.person_id,
+                first_seen: ind.first_seen,
+                last_seen: ind.last_seen,
+                violations: ind.violations.map(v => ({
+                    id: v.id,
+                    person_id: v.person_id,
+                    type: v.type,
+                    confidence: v.confidence,
+                    timestamp: v.timestamp,
+                    frame_num: v.frame_num || 0,
+                    image_path: v.image_path,
+                    review_status: reviewStatus[v.id] || 'pending'
+                })),
+                worn_ppe: ind.worn_ppe || []
+            }))
+
+            // Calculate session duration from stats
+            const duration = stats.frame_num / 30 // Assuming 30 fps
+
+            const response = await saveWebcamSession({
+                session_id: sessionId || Math.random().toString(36).substring(2, 10),
+                duration: duration,
+                total_frames: stats.frame_num,
+                recording_timestamp: recordingStartTime || new Date().toISOString(),
+                violations: violationsData,
+                individuals: individualsData
+            })
+
+            setSaveSuccess(response.data)
+
+        } catch (err) {
+            console.error('Failed to save session:', err)
+            setError(err.response?.data?.detail || 'Failed to save session to database')
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     useEffect(() => { return () => cleanup() }, [cleanup])
@@ -522,17 +607,77 @@ function Webcam() {
         if (!sessionEnded) return null
         const hasViolations = sessionViolations.length > 0
 
+        // If save was successful, show success message
+        if (saveSuccess) {
+            return (
+                <div className="page-content">
+                    <div className="card">
+                        <div className="card-body text-center py-12">
+                            <CheckCircle size={64} style={{ marginBottom: 24, color: 'var(--success)' }} />
+                            <h2 className="text-xl font-bold mb-4">Session Saved Successfully!</h2>
+                            <p className="text-muted mb-2">
+                                Your webcam session has been saved to the database.
+                            </p>
+                            <p className="text-muted mb-6">
+                                <strong>{saveSuccess.total_violations}</strong> confirmed violations from <strong>{saveSuccess.total_individuals}</strong> individuals.
+                                <br />
+                                Shift: <span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{saveSuccess.shift}</span>
+                            </p>
+                            <div className="flex gap-4 justify-center">
+                                <button className="btn btn-primary" onClick={startStreaming}>
+                                    <RefreshCw size={16} />
+                                    Start New Session
+                                </button>
+                                <Link to="/search" className="btn btn-secondary">
+                                    <ExternalLink size={16} />
+                                    View in Search Violations
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
         return (
             <div className="page-content">
                 {/* Header */}
-                <div className="page-header mb-6">
-                    <div className="page-header-content">
-                        <h2 className="page-title">Session Analysis Results</h2>
-                        <button className="btn btn-primary" onClick={startStreaming}>
-                            <RefreshCw size={16} />
-                            New Session
-                        </button>
+                <div className="page-header mb-6" style={{ paddingBottom: '1rem' }}>
+                    <div className="page-header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                        <h2 className="page-title" style={{ marginBottom: 0 }}>Session Analysis Results</h2>
+                        <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
+                            {hasViolations && (
+                                <button
+                                    className="btn btn-success"
+                                    onClick={handleFinishReviewing}
+                                    disabled={!allReviewed || isSaving}
+                                    title={!allReviewed ? 'Review all violations first' : 'Save session to database'}
+                                    style={{ minWidth: '150px' }}
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <RefreshCw size={16} className="spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={16} />
+                                            Finish Reviewing
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                            <button className="btn btn-secondary" onClick={startStreaming}>
+                                <RefreshCw size={16} />
+                                New Session
+                            </button>
+                        </div>
                     </div>
+                    {hasViolations && !allReviewed && (
+                        <p className="text-muted text-sm" style={{ marginTop: '1rem', marginBottom: 0 }}>
+                            Review all violations (confirm or reject) to enable the "Finish Reviewing" button.
+                        </p>
+                    )}
                 </div>
 
                 {!hasViolations ? (

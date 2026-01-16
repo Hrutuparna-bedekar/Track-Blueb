@@ -285,25 +285,14 @@ function Dashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart
                                 data={(() => {
-                                    // Process data and inject dummy data for Tue, Wed, Thu if needed
+                                    // Use day name from API if available, otherwise parse date
                                     let data = stats?.daily_violations || []
-                                    const daysMap = { 'Tue': 0, 'Wed': 1, 'Thu': 2 }
 
-                                    // Map to simpler format
+                                    // Map to simpler format using day from API or fallback to parsing
                                     data = data.map(d => ({
-                                        name: t(new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })),
+                                        name: t(d.day || new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })),
                                         violations: d.count
                                     }))
-
-                                    // Inject dummy data logic
-                                    // If we have data but specific days are flat 0, boost them for demo visualization as requested
-
-                                    data = data.map(d => {
-                                        if (['Tue', 'Wed', 'Thu'].includes(d.name) && d.violations === 0) {
-                                            return { ...d, violations: Math.floor(Math.random() * 5) + 2 } // Random 2-6 violations
-                                        }
-                                        return d
-                                    })
 
                                     return data
                                 })()}
@@ -592,7 +581,7 @@ function Dashboard() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
         </>
     )
 }

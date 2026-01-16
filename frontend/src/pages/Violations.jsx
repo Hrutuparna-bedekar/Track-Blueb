@@ -614,10 +614,16 @@ function Violations() {
                                                                             border: selectedViolations.includes(violation.id)
                                                                                 ? '2px solid var(--accent-primary)'
                                                                                 : '1px solid var(--border)',
-                                                                            cursor: 'pointer',
-                                                                            background: 'var(--bg-surface)'
+                                                                            cursor: violation.review_status === 'pending' ? 'pointer' : 'default',
+                                                                            background: 'var(--bg-surface)',
+                                                                            opacity: violation.review_status !== 'pending' ? 0.8 : 1
                                                                         }}
-                                                                        onClick={() => toggleViolation(violation.id)}
+                                                                        onClick={() => {
+                                                                            // Only allow selection of pending violations
+                                                                            if (violation.review_status === 'pending') {
+                                                                                toggleViolation(violation.id)
+                                                                            }
+                                                                        }}
                                                                     >
                                                                         {/* Violation Image */}
                                                                         <div style={{

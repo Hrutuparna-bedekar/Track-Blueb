@@ -91,5 +91,8 @@ export const getVideoSummary = (videoId) => api.get(`/search/videos/${videoId}/s
 
 export const getAvailableDates = () => api.get('/search/dates')
 
+// Webcam
+export const saveWebcamSession = (sessionData) => api.post('/webcam/save-session', sessionData)
+
 export default api
 

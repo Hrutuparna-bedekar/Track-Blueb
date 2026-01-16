@@ -14,14 +14,24 @@ import {
     Eye,
     X,
     RefreshCw,
-    Filter
+    Filter,
+    MessageSquare
 } from 'lucide-react'
 import { searchVideos, getAvailableDates } from '../services/api'
 import { useLanguage } from '../context/LanguageContext'
+import ChatWindow from '../components/ChatWindow'
 
 function SearchViolations() {
     const { t } = useLanguage()
-    const [searchDate, setSearchDate] = useState(new Date().toISOString().split('T')[0])
+    // Get today's date in local timezone (YYYY-MM-DD format)
+    const getTodayDate = () => {
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = String(today.getMonth() + 1).padStart(2, '0')
+        const day = String(today.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    }
+    const [searchDate, setSearchDate] = useState(getTodayDate())
     const [selectedShift, setSelectedShift] = useState('')
     const [violationType, setViolationType] = useState('')
     const [loading, setLoading] = useState(false)
@@ -33,10 +43,19 @@ function SearchViolations() {
     const [expandedVideos, setExpandedVideos] = useState({})
     const [videoPlayer, setVideoPlayer] = useState(null)
     const [expandedDates, setExpandedDates] = useState({})
+    const [isChatOpen, setIsChatOpen] = useState(false)
 
     // Fetch available dates on mount
     useEffect(() => {
         fetchAvailableDates()
+    }, [])
+
+    // Auto-search with today's date on mount
+    useEffect(() => {
+        if (searchDate) {
+            handleSearch()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const fetchAvailableDates = async () => {
@@ -188,12 +207,23 @@ function SearchViolations() {
                     }}>
                         {/* Violation Type Summary */}
                         {Object.keys(video.violation_types || {}).length > 0 && (
-                            <div className="mb-4">
+                            <div className="mb-4" style={{ overflow: 'hidden' }}>
                                 <h4 className="text-sm font-semibold mb-2">{t('Violation Summary')}</h4>
-                                <div className="flex flex-wrap" style={{ gap: '8px 16px' }}>
+                                <div style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '8px 16px',
+                                    maxWidth: '100%'
+                                }}>
                                     {Object.entries(video.violation_types).map(([type, count]) => (
-                                        <div key={type} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)' }}></span>
+                                        <div key={type} style={{
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }}></span>
                                             <span style={{ color: 'var(--text-secondary)' }}>{type}:</span>
                                             <span style={{ fontWeight: 600 }}>{count}</span>
                                         </div>
@@ -299,7 +329,10 @@ function SearchViolations() {
                                                             padding: 12,
                                                             display: 'grid',
                                                             gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                                                            gap: '12px'
+                                                            gap: '12px',
+                                                            maxHeight: '400px',
+                                                            overflowY: 'auto',
+                                                            overflowX: 'hidden'
                                                         }}>
                                                             {personViolations.map((v) => (
                                                                 <div key={v.id} style={{
@@ -722,6 +755,18 @@ function SearchViolations() {
                     </p>
                 </div>
             )}
+
+            {/* Chat Toggle Button */}
+            <button
+                className="chat-toggle-btn"
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                title={t('Ask VioTrack')}
+            >
+                <MessageSquare size={24} />
+            </button>
+
+            {/* Chat Window */}
+            <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
         </>
     )
 }

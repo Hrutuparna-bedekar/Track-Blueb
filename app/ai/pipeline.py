@@ -983,7 +983,7 @@ class VideoPipeline:
                         px1, py1, px2, py2 = person_bbox
                         head_height = int((py2 - py1) * 0.3)
                         goggles_bbox = (px1, py1, px2, py1 + head_height)
-                        violations.append((goggles_bbox, 'No Goggles', 0.8))
+                        violations.append((goggles_bbox, 'No Goggles', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Goggles violation for Person-{track_id} (no goggles for {time_without_goggles:.1f}s)")
         
@@ -1029,7 +1029,7 @@ class VideoPipeline:
                         px1, py1, px2, py2 = person_bbox
                         head_height = int((py2 - py1) * 0.4)
                         helmet_bbox = (px1, py1, px2, py1 + head_height)
-                        violations.append((helmet_bbox, 'No Helmet', 0.8))
+                        violations.append((helmet_bbox, 'No Helmet', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Helmet violation for Person-{track_id} (no helmet for {time_without_helmet:.1f}s)")
         
@@ -1071,7 +1071,7 @@ class VideoPipeline:
                         torso_top = py1 + int(person_height * 0.2)
                         torso_bottom = py1 + int(person_height * 0.8)
                         vest_bbox = (px1, torso_top, px2, torso_bottom)
-                        violations.append((vest_bbox, 'No Safety Vest', 0.8))
+                        violations.append((vest_bbox, 'No Safety Vest', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Safety Vest violation for Person-{track_id} (no vest for {time_without_vest:.1f}s)")
         
@@ -1118,7 +1118,7 @@ class VideoPipeline:
                         px1, py1, px2, py2 = person_bbox
                         face_height = int((py2 - py1) * 0.35)
                         mask_bbox = (px1, py1, px2, py1 + face_height)
-                        violations.append((mask_bbox, 'No Face Mask', 0.8))
+                        violations.append((mask_bbox, 'No Face Mask', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Face Mask violation for Person-{track_id} (no mask for {time_without_mask:.1f}s)")
         
@@ -1166,7 +1166,7 @@ class VideoPipeline:
                         hands_top = py1 + int(person_height * 0.4)
                         hands_bottom = py1 + int(person_height * 0.7)
                         gloves_bbox = (px1, hands_top, px2, hands_bottom)
-                        violations.append((gloves_bbox, 'No Gloves', 0.8))
+                        violations.append((gloves_bbox, 'No Gloves', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Gloves violation for Person-{track_id} (no gloves for {time_without_gloves:.1f}s)")
         
@@ -1213,7 +1213,7 @@ class VideoPipeline:
                         person_height = py2 - py1
                         feet_top = py1 + int(person_height * 0.7)
                         boots_bbox = (px1, feet_top, px2, py2)
-                        violations.append((boots_bbox, 'No Safety Boots', 0.8))
+                        violations.append((boots_bbox, 'No Safety Boots', person_conf))
                         if frame_num % 30 == 0:
                             logger.info(f"No Safety Boots violation for Person-{track_id} (no boots for {time_without_boots:.1f}s)")
         

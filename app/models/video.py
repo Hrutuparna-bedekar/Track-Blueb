@@ -53,6 +53,9 @@ class Video(Base):
     # Time-of-day shift when video was recorded
     shift = Column(String(50), nullable=True)  # morning, evening, night
     
+    # Source of the video: 'upload' for uploaded videos, 'webcam' for webcam recordings
+    source = Column(String(50), default="upload")  # upload, webcam
+    
     # Review status - video must be reviewed before appearing in search
     is_reviewed = Column(Integer, default=0)  # 0 = not reviewed, 1 = reviewed
     reviewed_at = Column(DateTime, nullable=True)

@@ -5,7 +5,7 @@ Video upload and management endpoints.
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks, Form
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from typing import Optional
 import os
 import uuid
@@ -298,6 +298,24 @@ async def mark_video_reviewed(
     video.is_reviewed = 1
     video.reviewed_at = datetime.now()
     
+    # Also mark all associated violations as confirmed
+    # Get all individual IDs for this video
+    stmt = select(TrackedIndividual.id).where(TrackedIndividual.video_id == video.id)
+    individual_ids_result = await db.execute(stmt)
+    individual_ids = individual_ids_result.scalars().all()
+    
+    if individual_ids:
+        # Update violations for these individuals
+        update_stmt = (
+            update(Violation)
+            .where(Violation.individual_id.in_(individual_ids))
+            .values(
+                review_status="confirmed",
+                reviewed_at=datetime.now()
+            )
+        )
+        await db.execute(update_stmt)
+    
     await db.commit()
     await db.refresh(video)
     
@@ -330,6 +348,24 @@ async def unmark_video_reviewed(
     # Remove review status
     video.is_reviewed = 0
     video.reviewed_at = None
+    
+    # Also revert all associated violations to pending
+    # Get all individual IDs for this video
+    stmt = select(TrackedIndividual.id).where(TrackedIndividual.video_id == video.id)
+    individual_ids_result = await db.execute(stmt)
+    individual_ids = individual_ids_result.scalars().all()
+    
+    if individual_ids:
+        # Update violations for these individuals
+        update_stmt = (
+            update(Violation)
+            .where(Violation.individual_id.in_(individual_ids))
+            .values(
+                review_status="pending",
+                reviewed_at=None
+            )
+        )
+        await db.execute(update_stmt)
     
     await db.commit()
     

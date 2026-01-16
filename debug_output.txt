@@ -1,0 +1,20 @@
+
+--- Debugging Violations for 2026-01-17 ---
+
+Total Violations (ALL statuses): 40
+Confirmed Violations: 21
+Pending Violations: 0
+Rejected Violations: 19
+------------------------------
+
+Confirmed by Type:
+  No Face Mask: 5
+  No Gloves: 4
+  No Helmet: 2
+  No Safety Vest: 10
+
+Pending by Type:
+------------------------------
+
+Inconsistency Check: Pending Violations in Reviewed Videos
+No inconsistencies found.

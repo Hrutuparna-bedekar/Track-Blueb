@@ -10,11 +10,17 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Optional
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional, List
+from pydantic import BaseModel
 
 from app.ai.pipeline import VideoPipeline
 from app.config import settings
+from app.database import get_db
+from app.models.video import Video, ProcessingStatus
+from app.models.individual import TrackedIndividual
+from app.models.violation import Violation
 
 logger = logging.getLogger(__name__)
 
@@ -234,3 +240,184 @@ async def webcam_status():
             "error": str(e)
         }
 
+
+# ============ Pydantic Models for Save Session ============
+
+class WebcamViolation(BaseModel):
+    """Violation data from webcam session."""
+    id: int
+    person_id: int
+    type: str
+    confidence: float
+    timestamp: float
+    frame_num: int
+    image_path: Optional[str] = None
+    review_status: str  # 'confirmed', 'rejected', 'pending'
+
+
+class WebcamIndividual(BaseModel):
+    """Individual data from webcam session."""
+    person_id: int
+    first_seen: float
+    last_seen: float
+    violations: List[WebcamViolation] = []
+    worn_ppe: List[str] = []
+
+
+class SaveSessionRequest(BaseModel):
+    """Request body for saving webcam session."""
+    session_id: str
+    duration: float  # Total session duration in seconds
+    total_frames: int
+    recording_timestamp: str  # ISO format datetime when recording started
+    violations: List[WebcamViolation]
+    individuals: List[WebcamIndividual]
+
+
+def determine_shift_from_time(dt: datetime) -> str:
+    """
+    Determine shift based on time of day.
+    - Morning: 6AM - 2PM (6:00 - 13:59)
+    - Evening: 2PM - 10PM (14:00 - 21:59)
+    - Night: 10PM - 6AM (22:00 - 5:59)
+    """
+    hour = dt.hour
+    if 6 <= hour < 14:
+        return "morning"
+    elif 14 <= hour < 22:
+        return "evening"
+    else:
+        return "night"
+
+
+@router.post("/save-session")
+async def save_webcam_session(
+    request: SaveSessionRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Save a webcam session to the database.
+    
+    This creates:
+    - A Video entry with source='webcam'
+    - TrackedIndividual entries for each person
+    - Violation entries for each detected violation (with review status)
+    
+    The session is automatically marked as reviewed and will appear in
+    Search Violations, Dashboard graphs, and Chat queries.
+    """
+    try:
+        # Parse recording timestamp - ensure we use local naive datetime
+        try:
+            # Parse the ISO timestamp
+            parsed_time = datetime.fromisoformat(request.recording_timestamp.replace('Z', '+00:00'))
+            # Convert to naive local datetime (remove timezone info)
+            if parsed_time.tzinfo is not None:
+                # Convert to local time and make naive
+                recording_time = parsed_time.replace(tzinfo=None)
+            else:
+                recording_time = parsed_time
+        except:
+            recording_time = datetime.now()
+        
+        # Determine shift based on recording time
+        shift = determine_shift_from_time(recording_time)
+        
+        # Create Video entry
+        video = Video(
+            filename=f"webcam_{request.session_id}.mp4",
+            original_filename=f"Webcam Recording - {recording_time.strftime('%Y-%m-%d %H:%M')}",
+            file_path=f"webcam_sessions/{request.session_id}",  # Virtual path
+            file_size=0,
+            duration=request.duration,
+            fps=30.0,
+            width=640,
+            height=480,
+            status=ProcessingStatus.COMPLETED.value,
+            processing_progress=100.0,
+            total_individuals=len(request.individuals),
+            total_violations=len([v for v in request.violations if v.review_status == 'confirmed']),
+            shift=shift,
+            source="webcam",
+            is_reviewed=1,  # Auto-mark as reviewed
+            reviewed_at=datetime.now(),
+            uploaded_at=recording_time,
+            processed_at=datetime.now()
+        )
+        
+        db.add(video)
+        await db.flush()  # Get video.id
+        
+        # Create TrackedIndividual entries
+        individual_id_map = {}  # person_id -> TrackedIndividual.id
+        
+        for ind in request.individuals:
+            # Count confirmed violations for this person
+            confirmed_count = len([v for v in request.violations 
+                                   if v.person_id == ind.person_id and v.review_status == 'confirmed'])
+            rejected_count = len([v for v in request.violations 
+                                  if v.person_id == ind.person_id and v.review_status == 'rejected'])
+            total_violations = len([v for v in request.violations if v.person_id == ind.person_id])
+            
+            # Calculate risk score
+            risk_score = min(1.0, confirmed_count / 3) if confirmed_count > 0 else 0.0
+            
+            tracked_ind = TrackedIndividual(
+                video_id=video.id,
+                track_id=ind.person_id,
+                first_seen_frame=int(ind.first_seen * 30),  # Approx frame
+                last_seen_frame=int(ind.last_seen * 30),
+                first_seen_time=ind.first_seen,
+                last_seen_time=ind.last_seen,
+                total_frames_tracked=int((ind.last_seen - ind.first_seen) * 30),
+                total_violations=total_violations,
+                confirmed_violations=confirmed_count,
+                rejected_violations=rejected_count,
+                risk_score=risk_score,
+                worn_equipment=",".join(ind.worn_ppe) if ind.worn_ppe else None,
+                created_at=datetime.now()
+            )
+            
+            db.add(tracked_ind)
+            await db.flush()
+            individual_id_map[ind.person_id] = tracked_ind.id
+        
+        # Create Violation entries
+        for v in request.violations:
+            individual_id = individual_id_map.get(v.person_id)
+            if not individual_id:
+                continue
+            
+            violation = Violation(
+                individual_id=individual_id,
+                violation_type=v.type,
+                confidence=v.confidence,
+                frame_number=v.frame_num,
+                timestamp=v.timestamp,
+                image_path=v.image_path,
+                review_status=v.review_status,
+                detected_at=recording_time,
+                reviewed_at=datetime.now() if v.review_status != 'pending' else None
+            )
+            
+            db.add(violation)
+        
+        await db.commit()
+        await db.refresh(video)
+        
+        logger.info(f"Saved webcam session {request.session_id} as video ID {video.id}")
+        
+        return {
+            "success": True,
+            "message": "Webcam session saved successfully",
+            "video_id": video.id,
+            "total_individuals": len(request.individuals),
+            "total_violations": video.total_violations,
+            "shift": shift,
+            "recording_date": recording_time.strftime("%Y-%m-%d")
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to save webcam session: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")

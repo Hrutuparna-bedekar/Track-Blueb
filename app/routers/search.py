@@ -301,15 +301,19 @@ async def get_available_dates(
     Get list of dates that have analyzed videos.
     Useful for populating date picker options.
     """
+    # Use SQLite-compatible date extraction - filter out NULL uploaded_at
     query = select(
-        cast(Video.uploaded_at, Date).label("date"),
+        func.date(Video.uploaded_at).label("date"),
         func.count(Video.id).label("video_count")
     ).where(
-        Video.status == "completed"
+        and_(
+            Video.status == "completed",
+            Video.uploaded_at.isnot(None)
+        )
     ).group_by(
-        cast(Video.uploaded_at, Date)
+        func.date(Video.uploaded_at)
     ).order_by(
-        cast(Video.uploaded_at, Date).desc()
+        func.date(Video.uploaded_at).desc()
     )
     
     result = await db.execute(query)
@@ -318,9 +322,10 @@ async def get_available_dates(
     return {
         "dates": [
             {
-                "date": str(row.date),
+                "date": row.date if isinstance(row.date, str) else str(row.date) if row.date else None,
                 "video_count": row.video_count
             }
             for row in rows
+            if row.date is not None
         ]
     }

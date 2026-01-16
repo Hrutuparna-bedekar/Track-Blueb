@@ -72,7 +72,19 @@ export const translations = {
         "No Safety Vest": "No Safety Vest",
         "No Gloves": "No Gloves",
         "People Count": "People Count",
-        "People In Frame": "People In Frame"
+        "People In Frame": "People In Frame",
+
+        // Chat Window
+        "Ask VioTrack": "Ask VioTrack",
+        "Ask questions about violations, videos, or individuals": "Ask questions about violations, videos, or individuals",
+        "Try": "Try",
+        "How many violations today?": "How many violations today?",
+        "more rows": "more rows",
+        "Hide details": "Hide details",
+        "Show SQL": "Show SQL",
+        "Reasoning": "Reasoning",
+        "Ask about violations...": "Ask about violations...",
+        "Clear history": "Clear history"
     },
     hi: {
         // Navbar
@@ -157,6 +169,18 @@ export const translations = {
         "No Gloves": "दस्ताने नहीं",
         "People Count": "लोगो की गिनती",
         "People In Frame": "फ्रेम में लोग",
+
+        // Chat Window
+        "Ask VioTrack": "VioTrack से पूछें",
+        "Ask questions about violations, videos, or individuals": "उल्लंघन, वीडियो या व्यक्तियों के बारे में प्रश्न पूछें",
+        "Try": "प्रयास करें",
+        "How many violations today?": "आज कितने उल्लंघन हुए?",
+        "more rows": "और पंक्तियां",
+        "Hide details": "विवरण छुपाएं",
+        "Show SQL": "SQL दिखाएं",
+        "Reasoning": "तर्क",
+        "Ask about violations...": "उल्लंघनों के बारे में पूछें...",
+        "Clear history": "इतिहास साफ़ करें",
         "morning": "सुबह",
         "evening": "शाम",
         "night": "रात",
