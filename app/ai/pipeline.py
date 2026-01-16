@@ -401,7 +401,10 @@ class VideoPipeline:
         # Get model classes
         self.class_names = self.model.names if hasattr(self.model, 'names') else {}
         
-        logger.info(f"Pipeline with custom person tracking initialized")
+        # Determine device
+        import torch
+        self.device = 0 if torch.cuda.is_available() else 'cpu'
+        logger.info(f"Pipeline with custom person tracking initialized on device: {self.device}")
         logger.info(f"Model classes: {self.class_names}")
     
     def reset(self):
@@ -712,6 +715,7 @@ class VideoPipeline:
             frame,
             conf=settings.CONFIDENCE_THRESHOLD,
             iou=settings.IOU_THRESHOLD,
+            device=self.device,
             verbose=False
         )
         

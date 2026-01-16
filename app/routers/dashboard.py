@@ -91,19 +91,23 @@ async def get_dashboard_stats(
     )
     repeat_offenders_count = repeat_result.scalar() or 0
     
-    # Violations by type (PPE-wise)
+    # Violations by type (PPE-wise) - Verified Videos Only
     type_result = await db.execute(
         select(Violation.violation_type, func.count())
+        .join(TrackedIndividual, Violation.individual_id == TrackedIndividual.id)
+        .join(Video, TrackedIndividual.video_id == Video.id)
+        .where(Video.is_reviewed == 1)
         .group_by(Violation.violation_type)
     )
     violations_by_type = {row[0]: row[1] for row in type_result.all()}
     
-    # Violations by shift
+    # Violations by shift - Verified Videos Only
     shift_result = await db.execute(
         select(Video.shift, func.count(Violation.id))
         .join(TrackedIndividual, TrackedIndividual.video_id == Video.id)
         .join(Violation, Violation.individual_id == TrackedIndividual.id)
         .where(Video.shift.isnot(None))
+        .where(Video.is_reviewed == 1)
         .group_by(Video.shift)
     )
     violations_by_shift = {row[0]: row[1] for row in shift_result.all()}
@@ -137,7 +141,10 @@ async def get_dashboard_stats(
         
         day_result = await db.execute(
             select(func.count()).select_from(Violation)
+            .join(TrackedIndividual, Violation.individual_id == TrackedIndividual.id)
+            .join(Video, TrackedIndividual.video_id == Video.id)
             .where(and_(Violation.detected_at >= day_start, Violation.detected_at < day_end))
+            .where(Video.is_reviewed == 1)
         )
         count = day_result.scalar() or 0
         daily_violations.append({"date": day.strftime("%Y-%m-%d"), "count": count})
@@ -162,6 +169,55 @@ async def get_dashboard_stats(
             image_path=violation.image_path
         ))
     
+    # Correlation Data (Violations vs People Count per Video)
+    correlation_data = []
+    recent_videos_result = await db.execute(
+        select(Video)
+        .where(Video.is_reviewed == 1)
+        .order_by(Video.uploaded_at.desc())
+        .limit(20)
+    )
+    for vid in recent_videos_result.scalars().all():
+        correlation_data.append({
+            "video_name": vid.original_filename,
+            "people_count": vid.total_individuals,
+            "violation_count": vid.total_violations
+        })
+    
+    # Real data only for correlation chart requested by user
+
+
+    # PPE Trends with Dummy Data Injection for Tue/Wed/Thu as requested
+    ppe_trends = []
+    today = datetime.utcnow().date()
+    for i in range(29, -1, -1):
+        date_obj = today - timedelta(days=i)
+        date_str = date_obj.strftime("%Y-%m-%d")
+        day_name = date_obj.strftime("%a")
+        
+        # Base random data
+        import random
+        helmet = random.randint(0, 5)
+        goggles = random.randint(0, 5)
+        shoes = random.randint(0, 5)
+        
+        # Boost specific days (Tue/Wed/Thu) or ensure data exists
+        if day_name in ['Tue', 'Wed', 'Thu']:
+             helmet = max(helmet, random.randint(3, 8))
+             goggles = max(goggles, random.randint(2, 6))
+             shoes = max(shoes, random.randint(2, 6))
+             
+        # "Missing Goggles" growing trend simulation (last 10 days)
+        if i < 10:
+             goggles += random.randint(2, 5)
+             
+        ppe_trends.append({
+            "date": date_str,
+            "Missing Helmet": helmet,
+            "Missing Goggles": goggles,
+            "Missing Shoes": shoes
+        })
+
     return DashboardStats(
         total_videos=total_videos,
         total_individuals=total_individuals,
@@ -179,7 +235,9 @@ async def get_dashboard_stats(
         low_confidence_count=low_confidence_count,
         recent_videos_count=recent_videos_count,
         daily_violations=daily_violations,
-        recent_events=recent_events
+        recent_events=recent_events,
+        correlation_data=correlation_data,
+        ppe_trends=ppe_trends
     )
 
 
@@ -197,15 +255,17 @@ async def get_repeat_offenders(
         limit: Maximum results to return (default: 20)
     """
     result = await db.execute(
-        select(TrackedIndividual)
+        select(TrackedIndividual, Video.original_filename)
+        .join(Video, TrackedIndividual.video_id == Video.id)
         .where(TrackedIndividual.total_violations >= min_violations)
+        .where(Video.is_reviewed == 1)
         .order_by(TrackedIndividual.total_violations.desc())
         .limit(limit)
     )
-    individuals = result.scalars().all()
+    rows = result.all()
     
     offenders = []
-    for ind in individuals:
+    for ind, video_name in rows:
         # Get most common violation type
         type_result = await db.execute(
             select(Violation.violation_type, func.count())
@@ -220,6 +280,7 @@ async def get_repeat_offenders(
         offenders.append(RepeatOffender(
             individual_id=ind.id,
             video_id=ind.video_id,
+            video_name=video_name,
             track_id=ind.track_id,
             total_violations=ind.total_violations,
             confirmed_violations=ind.confirmed_violations,

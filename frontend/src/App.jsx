@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
+import { LanguageProvider } from './context/LanguageContext'
 import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
@@ -12,22 +13,24 @@ import SearchViolations from './pages/SearchViolations'
 
 function App() {
     return (
-        <ThemeProvider>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<Landing />} />
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="videos" element={<Videos />} />
-                        <Route path="videos/:videoId" element={<VideoDetail />} />
-                        <Route path="violations" element={<Violations />} />
-                        <Route path="webcam" element={<Webcam />} />
-                        <Route path="search" element={<SearchViolations />} />
-                        <Route path="individuals/:videoId" element={<Individuals />} />
-                    </Route>
-                </Routes>
-            </BrowserRouter>
-        </ThemeProvider>
+        <LanguageProvider>
+            <ThemeProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/" element={<Layout />}>
+                            <Route index element={<Landing />} />
+                            <Route path="dashboard" element={<Dashboard />} />
+                            <Route path="videos" element={<Videos />} />
+                            <Route path="videos/:videoId" element={<VideoDetail />} />
+                            <Route path="violations" element={<Violations />} />
+                            <Route path="webcam" element={<Webcam />} />
+                            <Route path="search" element={<SearchViolations />} />
+                            <Route path="individuals/:videoId" element={<Individuals />} />
+                        </Route>
+                    </Routes>
+                </BrowserRouter>
+            </ThemeProvider>
+        </LanguageProvider>
     )
 }
 

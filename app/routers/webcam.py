@@ -42,19 +42,32 @@ def save_webcam_violation_image(frame: np.ndarray, bbox: tuple, session_id: str,
         x1, y1, x2, y2 = [int(c) for c in bbox]
         h, w = frame.shape[:2]
         
-        # Add padding around the violation area
-        pad_x, pad_y = int((x2 - x1) * 0.5), int((y2 - y1) * 0.5)
-        x1, y1 = max(0, x1 - pad_x), max(0, y1 - pad_y)
-        x2, y2 = min(w, x2 + pad_x), min(h, y2 + pad_y)
+        # Create copy for drawing
+        img = frame.copy()
         
-        img = frame[y1:y2, x1:x2].copy()
-        cv2.putText(img, f"Person-{track_id}: {vtype}", (5, 25),
+        # Draw violation box (RED) on the image BEFORE cropping
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
+        
+        # Add padding around the violation area for the crop
+        # 50% padding for context
+        pad_x, pad_y = int((x2 - x1) * 0.5), int((y2 - y1) * 0.5)
+        
+        crop_x1 = max(0, x1 - pad_x)
+        crop_y1 = max(0, y1 - pad_y)
+        crop_x2 = min(w, x2 + pad_x)
+        crop_y2 = min(h, y2 + pad_y)
+        
+        # perform crop
+        crop_img = img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+        
+        # Add text label to the crop
+        cv2.putText(crop_img, f"Person-{track_id}: {vtype}", (5, 25),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         
         safe = vtype.replace(" ", "_").lower()
         fname = f"webcam_p{track_id}_{safe}_{session_id}_{frame_num}.jpg"
         path = os.path.join(settings.VIOLATIONS_IMG_DIR, fname)
-        cv2.imwrite(path, img)
+        cv2.imwrite(path, crop_img)
         
         return f"/violation_images/{fname}"
     except Exception as e:

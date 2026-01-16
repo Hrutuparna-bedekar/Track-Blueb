@@ -52,6 +52,10 @@ class DashboardStats(BaseModel):
     # Recent events feed
     recent_events: List[RecentEvent] = []
 
+    # New Analytics
+    correlation_data: List[dict] = []  # [{video_name, people_count, violation_count}]
+    ppe_trends: List[dict] = []        # [{date, "Missing Helmet": int...}]
+
 
 class RepeatOffender(BaseModel):
     """Repeat offender summary."""

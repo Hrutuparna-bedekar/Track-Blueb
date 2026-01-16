@@ -14,8 +14,10 @@ import {
     Video
 } from 'lucide-react'
 import { getViolations, reviewViolation, bulkReviewViolations, getViolationTypes, getVideos } from '../services/api'
+import { useLanguage } from '../context/LanguageContext'
 
 function Violations() {
+    const { t } = useLanguage()
     const [searchParams, setSearchParams] = useSearchParams()
     const [violations, setViolations] = useState([])
     const [loading, setLoading] = useState(true)
@@ -51,7 +53,7 @@ function Violations() {
             setViolations(res.data.items)
             setTotal(res.data.total)
         } catch (err) {
-            setError('Failed to load violations')
+            setError(t('Failed to load violations'))
             console.error(err)
         } finally {
             setLoading(false)
@@ -117,7 +119,7 @@ function Violations() {
                     : v
             ))
         } catch (err) {
-            setError('Failed to submit review')
+            setError(t('Failed to submit review'))
             console.error(err)
         } finally {
             setSubmitting(false)
@@ -139,7 +141,7 @@ function Violations() {
 
             setSelectedViolations([])
         } catch (err) {
-            setError('Failed to submit bulk review')
+            setError(t('Failed to submit bulk review'))
             console.error(err)
         } finally {
             setSubmitting(false)
@@ -157,12 +159,12 @@ function Violations() {
     const getStatusBadge = (status) => {
         switch (status) {
             case 'confirmed':
-                return <span className="badge badge-success"><CheckCircle size={12} /> Confirmed</span>
+                return <span className="badge badge-success"><CheckCircle size={12} /> {t('Confirmed')}</span>
             case 'rejected':
-                return <span className="badge badge-danger"><XCircle size={12} /> Rejected</span>
+                return <span className="badge badge-danger"><XCircle size={12} /> {t('Rejected')}</span>
             case 'pending':
             default:
-                return <span className="badge badge-warning"><Clock size={12} /> Pending</span>
+                return <span className="badge badge-warning"><Clock size={12} /> {t('Pending')}</span>
         }
     }
 
@@ -195,17 +197,93 @@ function Violations() {
         return acc
     }, {})
 
+    // Summary State
+    const [summaryStatus, setSummaryStatus] = useState({
+        loading: false,
+        isFullyReviewed: false,
+        violators: [] // Full list of violators from all pages
+    })
+
+    const fetchSummaryData = async () => {
+        if (!filters.videoId) {
+            setSummaryStatus(prev => ({ ...prev, isFullyReviewed: false, violators: [] }))
+            return
+        }
+
+        try {
+            setSummaryStatus(prev => ({ ...prev, loading: true }))
+
+            // 1. Check for any pending violations in the whole video
+            const pendingRes = await getViolations({
+                videoId: filters.videoId,
+                reviewStatus: 'pending',
+                pageSize: 1
+            })
+
+            if (pendingRes.data.total > 0) {
+                setSummaryStatus({
+                    loading: false,
+                    isFullyReviewed: false,
+                    violators: []
+                })
+                if (showSummary) setShowSummary(false) // Close if open
+            } else {
+                // 2. If none pending, fetch ALL confirmed violations for summary
+                const confirmedRes = await getViolations({
+                    videoId: filters.videoId,
+                    reviewStatus: 'confirmed',
+                    pageSize: 1000 // Large enough to cover most videos
+                })
+
+                // Group by person
+                const violations = confirmedRes.data.items
+                const personMap = new Map()
+
+                violations.forEach(v => {
+                    const key = `${v.video_id}-${v.track_id}`
+                    if (!personMap.has(key)) {
+                        personMap.set(key, {
+                            video_id: v.video_id,
+                            track_id: v.track_id,
+                            image_path: v.image_path,
+                            violations: [],
+                            violation_types: new Set()
+                        })
+                    }
+                    const person = personMap.get(key)
+                    person.violations.push(v)
+                    person.violation_types.add(v.violation_type)
+                })
+
+                setSummaryStatus({
+                    loading: false,
+                    isFullyReviewed: true,
+                    violators: Array.from(personMap.values())
+                })
+            }
+        } catch (err) {
+            console.error('Failed to fetch summary data', err)
+            setSummaryStatus(prev => ({ ...prev, loading: false }))
+        }
+    }
+
+    // Refresh summary status when filters change or violations update (e.g. after review)
+    useEffect(() => {
+        fetchSummaryData()
+    }, [filters.videoId, violations]) // dependencies: videoId filter and current page violations (updates trigger re-check)
+
+
     return (
         <>
             <div className="page-header">
                 <div className="page-header-content">
                     <div>
-                        <h1 className="page-title">Violation Review</h1>
-                        <p className="page-subtitle">Review detected violations with snapshot images</p>
+                        <h1 className="page-title">{t('Violation Review')}</h1>
+                        <p className="page-subtitle">{t('Review detected violations with snapshot images')}</p>
                     </div>
                     <button className="btn btn-secondary" onClick={fetchViolations} disabled={loading}>
                         <RefreshCw size={16} />
-                        Refresh
+                        {t('Refresh')}
                     </button>
                 </div>
             </div>
@@ -240,10 +318,10 @@ function Violations() {
                                 onChange={(e) => handleFilterChange('reviewStatus', e.target.value)}
                                 style={{ width: 'auto', minWidth: 150 }}
                             >
-                                <option value="">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="rejected">Rejected</option>
+                                <option value="">{t('All Status')}</option>
+                                <option value="pending">{t('Pending')}</option>
+                                <option value="confirmed">{t('Confirmed')}</option>
+                                <option value="rejected">{t('Rejected')}</option>
                             </select>
 
                             <select
@@ -252,7 +330,7 @@ function Violations() {
                                 onChange={(e) => handleFilterChange('violationType', e.target.value)}
                                 style={{ width: 'auto', minWidth: 150 }}
                             >
-                                <option value="">All Types</option>
+                                <option value="">{t('All Types')}</option>
                                 {violationTypes.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}
@@ -260,7 +338,7 @@ function Violations() {
 
                             {filters.videoId && (
                                 <div className="badge badge-info flex items-center gap-2">
-                                    Video #{filters.videoId}
+                                    {t('Video')} #{filters.videoId}
                                     <button
                                         className="btn btn-ghost"
                                         style={{ padding: 2 }}
@@ -272,126 +350,107 @@ function Violations() {
                             )}
 
                             {/* Violator Summary Toggle */}
-                            <button
-                                className={`btn ${showSummary ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                                onClick={() => setShowSummary(!showSummary)}
-                                style={{ marginLeft: 'auto' }}
-                            >
-                                <FileText size={14} />
-                                {showSummary ? 'Hide Summary' : 'View Violator Summary'}
-                            </button>
+                            {filters.videoId && summaryStatus.isFullyReviewed && (
+                                <button
+                                    className={`btn ${showSummary ? 'btn-primary' : 'btn-success'} btn-sm`}
+                                    onClick={() => setShowSummary(!showSummary)}
+                                    style={{ marginLeft: 'auto' }}
+                                >
+                                    <FileText size={14} />
+                                    {showSummary ? t('Hide Summary') : t('View Verified Summary')}
+                                </button>
+                            )}
+                            {filters.videoId && !summaryStatus.isFullyReviewed && (
+                                <span className="text-muted text-sm ml-auto flex items-center gap-2">
+                                    <Clock size={14} />
+                                    {t('Review all to see summary')}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Violator Summary Section */}
-                {showSummary && (
+                {showSummary && summaryStatus.isFullyReviewed && (
                     <div className="card mb-6" style={{ borderColor: 'var(--success)' }}>
                         <div className="card-header">
                             <h3 className="card-title" style={{ color: 'var(--success)' }}>
                                 <CheckCircle size={18} style={{ marginRight: 8 }} />
-                                Confirmed Violators Summary
+                                {t('Verified Violators Summary (Full Video)')}
                             </h3>
                         </div>
                         <div className="card-body">
-                            {(() => {
-                                // Get unique persons with confirmed violations
-                                const confirmedViolations = violations.filter(v => v.review_status === 'confirmed')
-                                const personMap = new Map()
-
-                                confirmedViolations.forEach(v => {
-                                    const key = `${v.video_id}-${v.track_id}`
-                                    if (!personMap.has(key)) {
-                                        personMap.set(key, {
-                                            video_id: v.video_id,
-                                            track_id: v.track_id,
-                                            image_path: v.image_path,
-                                            violations: [],
-                                            violation_types: new Set()
-                                        })
-                                    }
-                                    const person = personMap.get(key)
-                                    person.violations.push(v)
-                                    person.violation_types.add(v.violation_type)
-                                })
-
-                                const violators = Array.from(personMap.values())
-
-                                if (violators.length === 0) {
-                                    return (
-                                        <div className="text-center text-muted py-4">
-                                            No confirmed violators yet. Review violations above to confirm them.
-                                        </div>
-                                    )
-                                }
-
-                                return (
-                                    <div className="table-container">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>Person</th>
-                                                    <th>Snapshot</th>
-                                                    <th>Violations</th>
-                                                    <th>Count</th>
+                            {summaryStatus.violators.length === 0 ? (
+                                <div className="text-center text-muted py-4">
+                                    {t('No confirmed violators found in this video.')}
+                                </div>
+                            ) : (
+                                <div className="table-container">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>{t('Person')}</th>
+                                                <th>{t('Snapshot')}</th>
+                                                <th>{t('Violations')}</th>
+                                                <th>{t('Count')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {summaryStatus.violators.map((person, idx) => (
+                                                <tr key={idx}>
+                                                    <td>
+                                                        <span className="font-semibold">
+                                                            {t('Person')} #{person.track_id}
+                                                        </span>
+                                                        <div className="text-muted text-sm">
+                                                            {t('Video')} #{person.video_id}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {person.image_path ? (
+                                                            <img
+                                                                src={person.image_path}
+                                                                alt={`Person ${person.track_id}`}
+                                                                style={{
+                                                                    width: 48,
+                                                                    height: 48,
+                                                                    objectFit: 'cover',
+                                                                    borderRadius: 6
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <User size={24} className="text-muted" />
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {Array.from(person.violation_types).map((type, i) => (
+                                                                <span key={i} className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
+                                                                    {type}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span className="badge badge-warning">
+                                                            {person.violations.length}
+                                                        </span>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                {violators.map((person, idx) => (
-                                                    <tr key={idx}>
-                                                        <td>
-                                                            <span className="font-semibold">
-                                                                Person #{person.track_id}
-                                                            </span>
-                                                            <div className="text-muted text-sm">
-                                                                Video #{person.video_id}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            {person.image_path ? (
-                                                                <img
-                                                                    src={person.image_path}
-                                                                    alt={`Person ${person.track_id}`}
-                                                                    style={{
-                                                                        width: 48,
-                                                                        height: 48,
-                                                                        objectFit: 'cover',
-                                                                        borderRadius: 6
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <User size={24} className="text-muted" />
-                                                            )}
-                                                        </td>
-                                                        <td>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {Array.from(person.violation_types).map((type, i) => (
-                                                                    <span key={i} className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
-                                                                        {type}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span className="badge badge-warning">
-                                                                {person.violations.length}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )
-                            })()}
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
+
                 {selectedViolations.length > 0 && (
                     <div className="card mb-6" style={{ borderColor: 'var(--accent-primary)' }}>
                         <div className="card-body flex items-center gap-4">
                             <span className="font-semibold">
-                                {selectedViolations.length} selected
+                                {selectedViolations.length} {t('selected')}
                             </span>
                             <button
                                 className="btn btn-success btn-sm"
@@ -399,7 +458,7 @@ function Violations() {
                                 disabled={submitting}
                             >
                                 <CheckCircle size={14} />
-                                Confirm All
+                                {t('Confirm All')}
                             </button>
                             <button
                                 className="btn btn-danger btn-sm"
@@ -407,14 +466,14 @@ function Violations() {
                                 disabled={submitting}
                             >
                                 <XCircle size={14} />
-                                Reject All
+                                {t('Reject All')}
                             </button>
                             <button
                                 className="btn btn-ghost btn-sm"
                                 onClick={() => setSelectedViolations([])}
                                 style={{ marginLeft: 'auto' }}
                             >
-                                Clear Selection
+                                {t('Clear Selection')}
                             </button>
                         </div>
                     </div>
@@ -426,7 +485,7 @@ function Violations() {
                         <div className="card-body">
                             <div className="flex items-center justify-center gap-2 text-muted">
                                 <div className="spinner" />
-                                Loading violations...
+                                {t('Loading violations...')}
                             </div>
                         </div>
                     </div>
@@ -434,11 +493,11 @@ function Violations() {
                     <div className="card">
                         <div className="empty-state">
                             <AlertTriangle className="empty-state-icon" />
-                            <h3 className="empty-state-title">No Violations Found</h3>
+                            <h3 className="empty-state-title">{t('No Violations Found')}</h3>
                             <p className="empty-state-description">
                                 {filters.reviewStatus || filters.violationType
-                                    ? 'Try adjusting your filters'
-                                    : 'Upload a video to start detecting violations'}
+                                    ? t('Try adjusting your filters')
+                                    : t('Upload a video to start detecting violations')}
                             </p>
                         </div>
                     </div>
@@ -453,7 +512,7 @@ function Violations() {
                                         <h3 className="card-title">{videoName}</h3>
                                     </div>
                                     <span className="badge badge-neutral">
-                                        {videoData.violations.length} violations
+                                        {videoData.violations.length} {t('violations')}
                                     </span>
                                 </div>
                                 <div className="card-body">
@@ -517,13 +576,13 @@ function Violations() {
                                                                             textTransform: 'uppercase',
                                                                             letterSpacing: '0.5px'
                                                                         }}>
-                                                                            Person {personIndex + 1}
+                                                                            {t('Person')} {personIndex + 1}
                                                                         </div>
                                                                         <div style={{
                                                                             color: 'var(--text-muted)',
                                                                             fontSize: '0.7rem'
                                                                         }}>
-                                                                            ID: {personKey}
+                                                                            {t('ID')}: {personKey}
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -536,7 +595,7 @@ function Violations() {
                                                                     fontSize: '0.8rem',
                                                                     border: '1px solid var(--border-color)'
                                                                 }}>
-                                                                    {personViolations.length} violation{personViolations.length !== 1 ? 's' : ''}
+                                                                    {personViolations.length} {personViolations.length !== 1 ? t('violations') : t('violation')}
                                                                 </span>
                                                             </div>
 
@@ -587,7 +646,7 @@ function Violations() {
                                                                             ) : (
                                                                                 <div className="text-muted flex flex-col items-center gap-2">
                                                                                     <Image size={32} />
-                                                                                    <span className="text-sm">No image</span>
+                                                                                    <span className="text-sm">{t('No image')}</span>
                                                                                 </div>
                                                                             )}
                                                                         </div>
@@ -603,9 +662,9 @@ function Violations() {
 
                                                                             {/* Details */}
                                                                             <div className="text-sm text-muted mb-3">
-                                                                                <div>Detected: {formatDateTime(violation.detected_at)}</div>
-                                                                                <div>Video Time: {formatTimestamp(violation.timestamp)}</div>
-                                                                                <div>Confidence: {Math.round(violation.confidence * 100)}%</div>
+                                                                                <div>{t('Detected')}: {formatDateTime(violation.detected_at)}</div>
+                                                                                <div>{t('Video Time')}: {formatTimestamp(violation.timestamp)}</div>
+                                                                                <div>{t('Confidence')}: {Math.round(violation.confidence * 100)}%</div>
                                                                             </div>
 
                                                                             {/* Review Actions */}
@@ -621,7 +680,7 @@ function Violations() {
                                                                                         disabled={submitting}
                                                                                     >
                                                                                         <CheckCircle size={14} />
-                                                                                        Confirm
+                                                                                        {t('Confirm')}
                                                                                     </button>
                                                                                     <button
                                                                                         className="btn btn-danger btn-sm"
@@ -633,7 +692,7 @@ function Violations() {
                                                                                         disabled={submitting}
                                                                                     >
                                                                                         <XCircle size={14} />
-                                                                                        Reject
+                                                                                        {t('Reject')}
                                                                                     </button>
                                                                                 </div>
                                                                             )}
@@ -656,7 +715,7 @@ function Violations() {
                             <div className="card">
                                 <div className="card-body flex items-center justify-between">
                                     <span className="text-muted text-sm">
-                                        Page {page} of {Math.ceil(total / 20)}
+                                        {t('Page')} {page} {t('of')} {Math.ceil(total / 20)}
                                     </span>
                                     <div className="flex gap-2">
                                         <button
@@ -664,14 +723,14 @@ function Violations() {
                                             disabled={page === 1}
                                             onClick={() => setPage(p => p - 1)}
                                         >
-                                            Previous
+                                            {t('Previous')}
                                         </button>
                                         <button
                                             className="btn btn-secondary btn-sm"
                                             disabled={page >= Math.ceil(total / 20)}
                                             onClick={() => setPage(p => p + 1)}
                                         >
-                                            Next
+                                            {t('Next')}
                                         </button>
                                     </div>
                                 </div>
@@ -739,7 +798,7 @@ function Violations() {
                     }}
                 >
                     <div className="text-center font-semibold" style={{ color: 'var(--accent-primary)' }}>
-                        {selectedViolations.length} Selected
+                        {selectedViolations.length} {t('selected')}
                     </div>
                     <button
                         className="btn btn-success"

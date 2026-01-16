@@ -17,9 +17,11 @@ import {
     Filter
 } from 'lucide-react'
 import { searchVideos, getAvailableDates } from '../services/api'
+import { useLanguage } from '../context/LanguageContext'
 
 function SearchViolations() {
-    const [searchDate, setSearchDate] = useState('')
+    const { t } = useLanguage()
+    const [searchDate, setSearchDate] = useState(new Date().toISOString().split('T')[0])
     const [selectedShift, setSelectedShift] = useState('')
     const [violationType, setViolationType] = useState('')
     const [loading, setLoading] = useState(false)
@@ -133,20 +135,22 @@ function SearchViolations() {
                         padding: '16px',
                         cursor: 'pointer',
                         display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '12px',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}
                 >
-                    <div className="flex items-center gap-3">
-                        <FileVideo size={24} style={{ color: 'var(--accent-primary)' }} />
-                        <div>
+                    <div className="flex items-center gap-3" style={{ minWidth: '280px', flex: '1 1 auto' }}>
+                        <FileVideo size={24} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                        <div style={{ wordBreak: 'break-word' }}>
                             <div className="font-semibold">{video.original_filename}</div>
                             <div className="text-sm text-muted">
                                 {formatDuration(video.duration)} • {formatTime(video.uploaded_at)}
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4" style={{ flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto' }}>
                         <div className="flex items-center gap-2">
                             <Users size={16} className="text-muted" />
                             <span>{video.total_individuals}</span>
@@ -154,10 +158,10 @@ function SearchViolations() {
                         {video.total_violations > 0 ? (
                             <span className="badge badge-warning">
                                 <AlertTriangle size={12} />
-                                {video.total_violations} violations
+                                {video.total_violations} {t('violations')}
                             </span>
                         ) : (
-                            <span className="badge badge-success">No violations</span>
+                            <span className="badge badge-success">{t('No violations')}</span>
                         )}
                         {video.annotated_video_path && (
                             <button
@@ -168,7 +172,7 @@ function SearchViolations() {
                                 }}
                             >
                                 <Play size={14} />
-                                Watch
+                                {t('Watch')}
                             </button>
                         )}
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -185,12 +189,14 @@ function SearchViolations() {
                         {/* Violation Type Summary */}
                         {Object.keys(video.violation_types || {}).length > 0 && (
                             <div className="mb-4">
-                                <h4 className="text-sm font-semibold mb-2">Violation Summary</h4>
-                                <div className="flex flex-wrap gap-2">
+                                <h4 className="text-sm font-semibold mb-2">{t('Violation Summary')}</h4>
+                                <div className="flex flex-wrap" style={{ gap: '8px 16px' }}>
                                     {Object.entries(video.violation_types).map(([type, count]) => (
-                                        <span key={type} className="badge badge-danger">
-                                            {type}: {count}
-                                        </span>
+                                        <div key={type} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)' }}></span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>{type}:</span>
+                                            <span style={{ fontWeight: 600 }}>{count}</span>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -200,7 +206,7 @@ function SearchViolations() {
                         {video.violations?.length > 0 ? (
                             <div>
                                 <h4 className="text-sm font-semibold mb-3">
-                                    Violation Snapshots ({video.violations.length}) - Grouped by Person
+                                    {t('Violation Snapshots')} ({video.violations.length}) - {t('Grouped by Person')}
                                 </h4>
                                 {(() => {
                                     // Group violations by person_id
@@ -264,14 +270,14 @@ function SearchViolations() {
                                                                         textTransform: 'uppercase',
                                                                         letterSpacing: '0.5px'
                                                                     }}>
-                                                                        Person {index + 1}
+                                                                        {t('Person')} {index + 1}
                                                                     </span>
                                                                     <div style={{
                                                                         color: 'var(--text-muted)',
                                                                         fontSize: '0.75rem',
                                                                         marginTop: 2
                                                                     }}>
-                                                                        ID: {personKey}
+                                                                        {t('ID')}: {personKey}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -284,7 +290,7 @@ function SearchViolations() {
                                                                 fontSize: '0.85rem',
                                                                 border: '1px solid var(--border-color)'
                                                             }}>
-                                                                {personViolations.length} violation{personViolations.length !== 1 ? 's' : ''}
+                                                                {personViolations.length} {personViolations.length !== 1 ? t('violations') : t('violation')}
                                                             </span>
                                                         </div>
 
@@ -332,10 +338,10 @@ function SearchViolations() {
                                                                             {v.type}
                                                                         </div>
                                                                         <div className="text-xs text-muted">
-                                                                            Confidence: {(v.confidence * 100).toFixed(0)}%
+                                                                            {t('Confidence')}: {(v.confidence * 100).toFixed(0)}%
                                                                         </div>
                                                                         <div className="text-xs text-muted">
-                                                                            Time: {v.timestamp?.toFixed(1)}s
+                                                                            {t('Time')}: {v.timestamp?.toFixed(1)}s
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -349,7 +355,7 @@ function SearchViolations() {
                                 })()}
                             </div>
                         ) : (
-                            <p className="text-muted text-sm">No violations detected in this video.</p>
+                            <p className="text-muted text-sm">{t('No violations detected in this video.')}</p>
                         )}
                     </div>
                 )}
@@ -387,7 +393,7 @@ function SearchViolations() {
                 ) : (
                     <div className="text-center text-muted py-8">
                         <FileVideo size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                        <p>No videos for this shift</p>
+                        <p>{t('No videos for this shift')}</p>
                     </div>
                 )}
             </div>
@@ -399,8 +405,8 @@ function SearchViolations() {
             <div className="page-header">
                 <div className="page-header-content">
                     <div>
-                        <h1 className="page-title">Search for Violations</h1>
-                        <p className="page-subtitle">Query analyzed videos by date and view violations</p>
+                        <h1 className="page-title">{t('Search for Violations')}</h1>
+                        <p className="page-subtitle">{t('Query analyzed videos by date and view violations')}</p>
                     </div>
                 </div>
             </div>
@@ -420,7 +426,7 @@ function SearchViolations() {
                             <div style={{ flex: 1, minWidth: 200 }}>
                                 <label className="form-label">
                                     <Calendar size={14} />
-                                    Select Date
+                                    {t('Select Date')}
                                 </label>
                                 <input
                                     type="date"
@@ -440,7 +446,7 @@ function SearchViolations() {
 
                             {/* Shift Filter */}
                             <div style={{ flex: 1, minWidth: 150 }}>
-                                <label className="form-label">Shift (Optional)</label>
+                                <label className="form-label">{t('Shift (Optional)')}</label>
                                 <select
                                     className="form-select"
                                     value={selectedShift}
@@ -454,16 +460,16 @@ function SearchViolations() {
                                         color: 'var(--text-primary)'
                                     }}
                                 >
-                                    <option value="">All Shifts</option>
-                                    <option value="morning">Morning</option>
-                                    <option value="evening">Evening</option>
-                                    <option value="night">Night</option>
+                                    <option value="">{t('All Shifts')}</option>
+                                    <option value="morning">{t('Morning')}</option>
+                                    <option value="evening">{t('Evening')}</option>
+                                    <option value="night">{t('Night')}</option>
                                 </select>
                             </div>
 
                             {/* Violation Type Filter */}
                             <div style={{ flex: 1, minWidth: 150 }}>
-                                <label className="form-label">Violation Type (Optional)</label>
+                                <label className="form-label">{t('Violation Type (Optional)')}</label>
                                 <select
                                     className="form-select"
                                     value={violationType}
@@ -477,11 +483,11 @@ function SearchViolations() {
                                         color: 'var(--text-primary)'
                                     }}
                                 >
-                                    <option value="">All Types</option>
-                                    <option value="No Helmet">No Helmet</option>
-                                    <option value="No Face Mask">No Face Mask</option>
-                                    <option value="No Safety Boots">No Safety Boots</option>
-                                    <option value="No Goggles">No Goggles</option>
+                                    <option value="">{t('All Types')}</option>
+                                    <option value="No Helmet">{t('No Helmet')}</option>
+                                    <option value="No Face Mask">{t('No Face Mask')}</option>
+                                    <option value="No Safety Boots">{t('No Safety Boots')}</option>
+                                    <option value="No Goggles">{t('No Goggles')}</option>
                                 </select>
                             </div>
 
@@ -495,12 +501,12 @@ function SearchViolations() {
                                 {loading ? (
                                     <>
                                         <RefreshCw size={16} className="spin" />
-                                        Searching...
+                                        {t('Searching...')}
                                     </>
                                 ) : (
                                     <>
                                         <Search size={16} />
-                                        Search
+                                        {t('Search')}
                                     </>
                                 )}
                             </button>
@@ -509,7 +515,7 @@ function SearchViolations() {
                         {/* Available Dates Quick Select */}
                         {availableDates.length > 0 && (
                             <div style={{ marginTop: 16 }}>
-                                <span className="text-sm text-muted">Quick select: </span>
+                                <span className="text-sm text-muted">{t('Quick select')}: </span>
                                 <div className="flex flex-wrap gap-2" style={{ marginTop: 4 }}>
                                     {availableDates.slice(0, 7).map(d => (
                                         <button
@@ -552,14 +558,14 @@ function SearchViolations() {
                         <div className="card-body flex items-center gap-6">
                             <div>
                                 <div className="text-2xl font-bold">{totalVideos}</div>
-                                <div className="text-sm text-muted">Videos Found</div>
+                                <div className="text-sm text-muted">{t('Videos Found')}</div>
                             </div>
                             <div style={{ width: 1, height: 40, background: 'var(--border-color)' }} />
                             <div>
                                 <div className="text-2xl font-bold" style={{ color: 'var(--warning)' }}>
                                     {totalViolations}
                                 </div>
-                                <div className="text-sm text-muted">Total Violations</div>
+                                <div className="text-sm text-muted">{t('Total Violations')}</div>
                             </div>
                         </div>
                     </div>
@@ -595,10 +601,10 @@ function SearchViolations() {
                             </div>
                             <div className="flex items-center gap-4">
                                 <span className="badge badge-neutral">
-                                    {dateGroup.total_videos} videos
+                                    {dateGroup.total_videos} {t('videos')}
                                 </span>
                                 <span className="badge badge-warning">
-                                    {dateGroup.total_violations} violations
+                                    {dateGroup.total_violations} {t('violations')}
                                 </span>
                                 {expandedDates[dateGroup.date] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                             </div>
@@ -617,19 +623,19 @@ function SearchViolations() {
                                 overflowX: 'auto'
                             }}>
                                 {renderShiftColumn(
-                                    'Morning (6AM - 2PM)',
+                                    t('Morning (6AM - 2PM)'),
                                     <Sun size={20} style={{ color: '#f59e0b' }} />,
                                     dateGroup.morning_videos,
                                     'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
                                 )}
                                 {renderShiftColumn(
-                                    'Evening (2PM - 10PM)',
+                                    t('Evening (2PM - 10PM)'),
                                     <Sunset size={20} style={{ color: '#f97316' }} />,
                                     dateGroup.evening_videos,
                                     'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'
                                 )}
                                 {renderShiftColumn(
-                                    'Night (10PM - 6AM)',
+                                    t('Night (10PM - 6AM)'),
                                     <Moon size={20} style={{ color: '#6366f1' }} />,
                                     dateGroup.night_videos,
                                     'linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 100%)'
@@ -643,9 +649,9 @@ function SearchViolations() {
                 {!loading && results.length === 0 && searchDate && (
                     <div className="empty-state">
                         <FileVideo className="empty-state-icon" />
-                        <h3 className="empty-state-title">No Videos Found</h3>
+                        <h3 className="empty-state-title">{t('No Videos Found')}</h3>
                         <p className="empty-state-description">
-                            No analyzed videos found for the selected date and filters.
+                            {t('No analyzed videos found for the selected date and filters.')}
                         </p>
                     </div>
                 )}
@@ -654,9 +660,9 @@ function SearchViolations() {
                 {!loading && results.length === 0 && !searchDate && (
                     <div className="empty-state">
                         <Search className="empty-state-icon" />
-                        <h3 className="empty-state-title">Search for Violations</h3>
+                        <h3 className="empty-state-title">{t('Search for Violations')}</h3>
                         <p className="empty-state-description">
-                            Select a date above to search for analyzed videos and their violations.
+                            {t('Select a date above to search for analyzed videos and their violations.')}
                         </p>
                     </div>
                 )}
@@ -686,7 +692,7 @@ function SearchViolations() {
                         marginBottom: 16
                     }}>
                         <h2 style={{ color: 'white', margin: 0 }}>
-                            Analyzed Video: {videoPlayer.original_filename}
+                            {t('Analyzed Video')}: {videoPlayer.original_filename}
                         </h2>
                         <button
                             className="btn btn-ghost"
@@ -712,7 +718,7 @@ function SearchViolations() {
                     </video>
 
                     <p style={{ color: 'rgba(255,255,255,0.7)', marginTop: 16, textAlign: 'center' }}>
-                        RED boxes = Violations detected • GREEN boxes = Tracked persons
+                        {t('RED boxes = Violations detected • GREEN boxes = Tracked persons')}
                     </p>
                 </div>
             )}

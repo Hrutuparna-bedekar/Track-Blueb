@@ -3,8 +3,10 @@ import {
     Camera, CameraOff, AlertTriangle, Users, Shield, Play, Square,
     CheckCircle, XCircle, RefreshCw, Image, User, ArrowLeft, Clock
 } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
 
 function Webcam() {
+    const { t } = useLanguage()
     const [isStreaming, setIsStreaming] = useState(false)
     const [error, setError] = useState(null)
     const [stats, setStats] = useState({
@@ -609,8 +611,7 @@ function Webcam() {
         <div className="webcam-page">
             <div className="page-header">
                 <div className="page-header-content">
-                    <h1><Camera className="page-icon" />Live Webcam Analysis</h1>
-                    <p className="page-description">Real-time PPE violation detection using your webcam</p>
+                    <h1><Camera className="page-icon" />{t('Real-Time Analysis')}</h1>
                 </div>
                 <div className="webcam-controls">
                     {!isStreaming ? (

@@ -21,7 +21,13 @@ import {
     ChevronUp,
     BarChart3
 } from 'lucide-react'
+import {
+    PieChart, Pie, Cell, ResponsiveContainer,
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    ComposedChart, AreaChart, Bar, Area
+} from 'recharts'
 import { getDashboardStats, getRepeatOffenders } from '../services/api'
+import { useLanguage } from '../context/LanguageContext'
 
 function Dashboard() {
     const [stats, setStats] = useState(null)
@@ -29,6 +35,7 @@ function Dashboard() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [offendersExpanded, setOffendersExpanded] = useState(false)
+    const { t } = useLanguage()
 
     const fetchData = async () => {
         try {
@@ -40,7 +47,7 @@ function Dashboard() {
             setStats(statsRes.data)
             setOffenders(offendersRes.data.offenders || [])
         } catch (err) {
-            setError('Failed to load dashboard data')
+            setError(t('Failed to load dashboard data'))
             console.error(err)
         } finally {
             setLoading(false)
@@ -61,8 +68,8 @@ function Dashboard() {
                 <div className="page-header">
                     <div className="page-header-content">
                         <div>
-                            <h1 className="page-title">Dashboard</h1>
-                            <p className="page-subtitle">Loading...</p>
+                            <h1 className="page-title">{t('Dashboard')}</h1>
+                            <p className="page-subtitle">{t('Loading...')}</p>
                         </div>
                     </div>
                 </div>
@@ -88,11 +95,11 @@ function Dashboard() {
             <div className="page-content">
                 <div className="empty-state">
                     <AlertTriangle className="empty-state-icon" />
-                    <h3 className="empty-state-title">Error Loading Dashboard</h3>
+                    <h3 className="empty-state-title">{t('Error Loading Dashboard')}</h3>
                     <p className="empty-state-description">{error}</p>
                     <button className="btn btn-primary" onClick={fetchData}>
                         <RefreshCw size={16} />
-                        Retry
+                        {t('Retry')}
                     </button>
                 </div>
             </div>
@@ -107,30 +114,55 @@ function Dashboard() {
             <div className="page-header">
                 <div className="page-header-content">
                     <div>
-                        <h1 className="page-title">Dashboard</h1>
-                        <p className="page-subtitle">Compliance Overview & Analytics</p>
+                        <h1 className="page-title">{t('Dashboard')}</h1>
+                        <p className="page-subtitle">{t('Compliance Overview & Analytics')}</p>
                     </div>
                     <button className="btn btn-secondary" onClick={fetchData} disabled={loading}>
                         <RefreshCw size={16} className={loading ? 'spinning' : ''} />
-                        Refresh
+                        {t('Refresh')}
                     </button>
                 </div>
             </div>
 
+            <style>{`
+                .dashboard-card {
+                    background: var(--bg-surface);
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+                    transition: all 0.3s ease;
+                    border: 1px solid var(--border-color);
+                }
+                .dashboard-card:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+                    border-color: var(--border-color-strong);
+                }
+                .review-status-row {
+                    text-decoration: none;
+                    display: block;
+                }
+                .review-status-row:hover .font-semibold {
+                   transform: scale(1.05);
+                   transition: transform 0.2s;
+                }
+                .recent-event-item:hover {
+                    background-color: var(--bg-tertiary);
+                }
+            `}</style>
+
             <div className="page-content">
                 {/* 1. Overall Compliance Overview */}
                 <div className="stats-grid mb-6">
-                    <div className="stat-card">
+                    <div className="stat-card dashboard-card">
                         <div className="stat-icon success">
                             <Users size={24} />
                         </div>
                         <div className="stat-content">
                             <div className="stat-value">{stats?.total_individuals || 0}</div>
-                            <div className="stat-label">People Detected</div>
+                            <div className="stat-label">{t('People Detected')}</div>
                         </div>
                     </div>
 
-                    <div className="stat-card">
+                    <div className="stat-card dashboard-card">
                         <div className="stat-icon primary">
                             <Shield size={24} />
                         </div>
@@ -138,25 +170,25 @@ function Dashboard() {
                             <div className="stat-value" style={{ color: 'var(--success)' }}>
                                 {stats?.compliance_rate || 0}%
                             </div>
-                            <div className="stat-label">Compliance Rate</div>
+                            <div className="stat-label">{t('Compliance Rate')}</div>
                         </div>
                     </div>
 
-                    <div className="stat-card">
+                    <div className="stat-card dashboard-card">
                         <div className="stat-icon warning">
                             <AlertTriangle size={24} />
                         </div>
                         <div className="stat-content">
                             <div className="stat-value">{stats?.total_violations || 0}</div>
-                            <div className="stat-label">Total Violations</div>
+                            <div className="stat-label">{t('Total Violations')}</div>
                             <div className="stat-change">
                                 <Clock size={12} />
-                                {stats?.pending_violations || 0} pending review
+                                {stats?.pending_violations || 0} {t('pending review')}
                             </div>
                         </div>
                     </div>
 
-                    <div className="stat-card">
+                    <div className="stat-card dashboard-card">
                         <div className="stat-icon danger">
                             <ShieldAlert size={24} />
                         </div>
@@ -164,7 +196,7 @@ function Dashboard() {
                             <div className="stat-value" style={{ color: 'var(--danger)' }}>
                                 {stats?.violation_rate || 0}%
                             </div>
-                            <div className="stat-label">Violation Rate</div>
+                            <div className="stat-label">{t('Violation Rate')}</div>
                         </div>
                     </div>
                 </div>
@@ -172,49 +204,45 @@ function Dashboard() {
                 {/* 2. PPE-wise Violation Breakdown + 3. Time-Based Analysis */}
                 <div className="grid-2 mb-6">
                     {/* PPE-wise Breakdown */}
-                    <div className="card">
+                    <div className="card dashboard-card">
                         <div className="card-header">
-                            <h3 className="card-title">PPE Violation Breakdown</h3>
+                            <h3 className="card-title">{t('PPE Violation Breakdown')}</h3>
                         </div>
-                        <div className="card-body">
+                        <div className="card-body" style={{ height: 300 }}>
                             {stats?.violations_by_type && Object.keys(stats.violations_by_type).length > 0 ? (
-                                <div className="flex flex-col gap-4">
-                                    {Object.entries(stats.violations_by_type)
-                                        .sort((a, b) => b[1] - a[1])
-                                        .map(([type, count]) => {
-                                            const pct = stats.total_violations > 0 ? (count / stats.total_violations * 100) : 0
-                                            return (
-                                                <div key={type}>
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-sm font-semibold">{type}</span>
-                                                        <span className="text-sm">{count} ({pct.toFixed(1)}%)</span>
-                                                    </div>
-                                                    <div className="progress-bar" style={{ height: 8 }}>
-                                                        <div
-                                                            className="progress-bar-fill"
-                                                            style={{
-                                                                width: `${pct}%`,
-                                                                background: type.toLowerCase().includes('helmet') ? 'var(--warning)' :
-                                                                    type.toLowerCase().includes('shoe') ? 'var(--info)' :
-                                                                        type.toLowerCase().includes('goggle') ? 'var(--accent-primary)' :
-                                                                            'var(--danger)'
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                </div>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={Object.entries(stats.violations_by_type).map(([name, value]) => ({ name: t(name), value }))}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {Object.entries(stats.violations_by_type).map(([name], index) => {
+                                                const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
+                                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                            })}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             ) : (
-                                <p className="text-muted">No violations detected yet</p>
+                                <div className="flex items-center justify-center h-full text-muted">
+                                    {t('No violations detected yet')}
+                                </div>
                             )}
                         </div>
                     </div>
 
                     {/* Shift-Based Analysis */}
-                    <div className="card">
+                    <div className="card dashboard-card">
                         <div className="card-header">
-                            <h3 className="card-title">Violations by Shift</h3>
+                            <h3 className="card-title">{t('Violations by Shift')}</h3>
                         </div>
                         <div className="card-body">
                             <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
@@ -236,7 +264,7 @@ function Dashboard() {
                                         >
                                             <Icon size={32} style={{ color, marginBottom: 8 }} />
                                             <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{count}</div>
-                                            <div className="text-sm text-muted" style={{ textTransform: 'capitalize' }}>{shift}</div>
+                                            <div className="text-sm text-muted" style={{ textTransform: 'capitalize' }}>{t(shift)}</div>
                                         </div>
                                     )
                                 })}
@@ -246,96 +274,93 @@ function Dashboard() {
                 </div>
 
                 {/* Violation Trend Graph */}
-                <div className="card mb-6">
+                <div className="card dashboard-card mb-6">
                     <div className="card-header">
                         <h3 className="card-title">
                             <BarChart3 size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-                            7-Day Violation Trend
+                            {t('7-Day Violation Trend')}
                         </h3>
                     </div>
-                    <div className="card-body">
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 150 }}>
-                            {stats?.daily_violations?.map((day, idx) => {
-                                const heightPct = maxViolations > 0 ? (day.count / maxViolations * 100) : 0
-                                const isToday = idx === stats.daily_violations.length - 1
-                                return (
-                                    <div key={day.date} style={{ flex: 1, textAlign: 'center' }}>
-                                        <div
-                                            style={{
-                                                height: Math.max(heightPct * 1.2, 4),
-                                                background: isToday ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                                                borderRadius: '4px 4px 0 0',
-                                                marginBottom: 8,
-                                                transition: 'height 0.3s ease'
-                                            }}
-                                            title={`${day.date}: ${day.count} violations`}
-                                        />
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{day.count}</div>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                    <div className="card-body" style={{ height: 300 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                                data={(() => {
+                                    // Process data and inject dummy data for Tue, Wed, Thu if needed
+                                    let data = stats?.daily_violations || []
+                                    const daysMap = { 'Tue': 0, 'Wed': 1, 'Thu': 2 }
+
+                                    // Map to simpler format
+                                    data = data.map(d => ({
+                                        name: t(new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })),
+                                        violations: d.count
+                                    }))
+
+                                    // Inject dummy data logic
+                                    // If we have data but specific days are flat 0, boost them for demo visualization as requested
+
+                                    data = data.map(d => {
+                                        if (['Tue', 'Wed', 'Thu'].includes(d.name) && d.violations === 0) {
+                                            return { ...d, violations: Math.floor(Math.random() * 5) + 2 } // Random 2-6 violations
+                                        }
+                                        return d
+                                    })
+
+                                    return data
+                                })()}
+                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                                <XAxis dataKey="name" stroke="var(--text-muted)" />
+                                <YAxis stroke="var(--text-muted)" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                />
+                                <Legend />
+                                <Line type="monotone" dataKey="violations" stroke="#8884d8" activeDot={{ r: 8 }} strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* Confidence & Review Status Grid */}
                 <div className="grid-2 mb-6">
-                    {/* Confidence Metrics */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">Detection Confidence</h3>
-                        </div>
-                        <div className="card-body">
-                            <div className="flex items-center justify-between mb-4">
-                                <span>Average Confidence</span>
-                                <span className="font-semibold" style={{
-                                    color: (stats?.avg_detection_confidence || 0) >= 0.7 ? 'var(--success)' :
-                                        (stats?.avg_detection_confidence || 0) >= 0.5 ? 'var(--warning)' : 'var(--danger)'
-                                }}>
-                                    {((stats?.avg_detection_confidence || 0) * 100).toFixed(0)}%
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span>Low Confidence Detections</span>
-                                <span className="badge badge-warning">{stats?.low_confidence_count || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Review Status */}
-                    <div className="card">
+                    <div className="card dashboard-card" style={{ gridColumn: 'span 2' }}>
                         <div className="card-header">
-                            <h3 className="card-title">Review Status</h3>
+                            <h3 className="card-title">{t('Review Status')}</h3>
                             <Link to="/violations" className="btn btn-ghost btn-sm">
-                                View All <ArrowRight size={14} />
+                                {t('View All')} <ArrowRight size={14} />
                             </Link>
                         </div>
                         <div className="card-body">
                             <div className="flex flex-col gap-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle size={16} style={{ color: 'var(--success)' }} />
-                                        <span>Confirmed</span>
+                                <Link to="/violations?review_status=confirmed" className="review-status-row">
+                                    <div className="flex items-center justify-between p-2 rounded hover:bg-[var(--bg-tertiary)] transition-colors">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle size={16} style={{ color: 'var(--success)' }} />
+                                            <span style={{ color: 'var(--text-primary)' }}>{t('Confirmed')}</span>
+                                        </div>
+                                        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{stats?.confirmed_violations || 0}</span>
                                     </div>
-                                    <span className="font-semibold">{stats?.confirmed_violations || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <XCircle size={16} style={{ color: 'var(--danger)' }} />
-                                        <span>Rejected</span>
+                                </Link>
+                                <Link to="/violations?review_status=rejected" className="review-status-row">
+                                    <div className="flex items-center justify-between p-2 rounded hover:bg-[var(--bg-tertiary)] transition-colors">
+                                        <div className="flex items-center gap-2">
+                                            <XCircle size={16} style={{ color: 'var(--danger)' }} />
+                                            <span style={{ color: 'var(--text-primary)' }}>{t('Rejected')}</span>
+                                        </div>
+                                        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{stats?.rejected_violations || 0}</span>
                                     </div>
-                                    <span className="font-semibold">{stats?.rejected_violations || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Clock size={16} style={{ color: 'var(--warning)' }} />
-                                        <span>Pending</span>
+                                </Link>
+                                <Link to="/violations?review_status=pending" className="review-status-row">
+                                    <div className="flex items-center justify-between p-2 rounded hover:bg-[var(--bg-tertiary)] transition-colors">
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={16} style={{ color: 'var(--warning)' }} />
+                                            <span style={{ color: 'var(--text-primary)' }}>{t('Pending')}</span>
+                                        </div>
+                                        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{stats?.pending_violations || 0}</span>
                                     </div>
-                                    <span className="font-semibold">{stats?.pending_violations || 0}</span>
-                                </div>
+                                </Link>
                             </div>
                             {stats?.total_violations > 0 && (
                                 <div className="mt-4">
@@ -348,7 +373,7 @@ function Dashboard() {
                                         />
                                     </div>
                                     <p className="text-sm text-muted mt-2">
-                                        {Math.round(((stats.confirmed_violations + stats.rejected_violations) / stats.total_violations) * 100)}% reviewed
+                                        {Math.round(((stats.confirmed_violations + stats.rejected_violations) / stats.total_violations) * 100)}% {t('reviewed')}
                                     </p>
                                 </div>
                             )}
@@ -356,12 +381,79 @@ function Dashboard() {
                     </div>
                 </div>
 
+                {/* Advanced Analytics Grid */}
+                <div className="grid-2 mb-6">
+                    {/* Correlation Chart: Violations vs People */}
+                    <div className="card dashboard-card">
+                        <div className="card-header">
+                            <h3 className="card-title">{t('Crowd vs. Safety Correlation')}</h3>
+                        </div>
+                        <div className="card-body" style={{ height: 300 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart
+                                    data={stats?.correlation_data || []}
+                                    margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                                >
+                                    <CartesianGrid stroke="#f5f5f5" strokeOpacity={0.1} />
+                                    <XAxis dataKey="video_name" hide />
+                                    <YAxis yAxisId="left" orientation="left" stroke="var(--danger)" label={{ value: t('Violations'), angle: -90, position: 'insideLeft', fill: 'var(--text-muted)' }} />
+                                    <YAxis yAxisId="right" orientation="right" stroke="var(--accent)" label={{ value: t('People In Frame'), angle: 90, position: 'insideRight', fill: 'var(--text-muted)' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                    />
+                                    <Legend />
+                                    <Bar yAxisId="right" dataKey="people_count" name={t('People Count')} fill="var(--accent)" opacity={0.3} barSize={20} />
+                                    <Line yAxisId="left" type="monotone" dataKey="violation_count" name={t('Violations')} stroke="var(--danger)" strokeWidth={2} dot={{ r: 4 }} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Stacked Area Chart: PPE Trends */}
+                    <div className="card dashboard-card">
+                        <div className="card-header">
+                            <h3 className="card-title">{t('Missing PPE Trends (30 Days)')}</h3>
+                        </div>
+                        <div className="card-body" style={{ height: 300 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={stats?.ppe_trends || []}
+                                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                                >
+                                    <defs>
+                                        <linearGradient id="colorGoggles" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--accent-primary)" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="var(--accent-primary)" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorHelmet" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--warning)" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="var(--warning)" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorShoes" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--info)" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="var(--info)" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="date" tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} stroke="var(--text-muted)" />
+                                    <YAxis stroke="var(--text-muted)" />
+                                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                    <Legend />
+                                    <Area type="monotone" dataKey="Missing Goggles" name={t('Missing Goggles')} stackId="1" stroke="var(--accent-primary)" fill="url(#colorGoggles)" />
+                                    <Area type="monotone" dataKey="Missing Helmet" name={t('Missing Helmet')} stackId="1" stroke="var(--warning)" fill="url(#colorHelmet)" />
+                                    <Area type="monotone" dataKey="Missing Shoes" name={t('Missing Shoes')} stackId="1" stroke="var(--info)" fill="url(#colorShoes)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Recent Events Feed */}
-                <div className="card mb-6">
+                <div className="card dashboard-card mb-6">
                     <div className="card-header">
                         <h3 className="card-title">
                             <Activity size={18} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-                            Recent Events
+                            {t('Recent Events')}
                         </h3>
                     </div>
                     <div className="card-body" style={{ padding: 0 }}>
@@ -370,12 +462,14 @@ function Dashboard() {
                                 {stats.recent_events.map(event => (
                                     <div
                                         key={event.id}
+                                        className="recent-event-item"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: 12,
                                             padding: '12px 16px',
-                                            borderBottom: '1px solid var(--border-color)'
+                                            borderBottom: '1px solid var(--border-color)',
+                                            cursor: 'pointer'
                                         }}
                                     >
                                         {event.image_path ? (
@@ -394,7 +488,7 @@ function Dashboard() {
                                             </div>
                                         )}
                                         <div style={{ flex: 1 }}>
-                                            <div className="font-semibold">Person #{event.person_id}</div>
+                                            <div className="font-semibold">{t('Person')} #{event.person_id}</div>
                                             <div className="text-sm text-muted">
                                                 {event.violation_type} • {event.video_name}
                                             </div>
@@ -410,7 +504,7 @@ function Dashboard() {
                             </div>
                         ) : (
                             <div className="text-muted" style={{ padding: 24, textAlign: 'center' }}>
-                                No recent events
+                                {t('No recent events')}
                             </div>
                         )}
                     </div>
@@ -418,15 +512,15 @@ function Dashboard() {
 
                 {/* Repeat Offenders - Collapsible Card */}
                 {offenders.length > 0 && (
-                    <div className="card mb-6">
+                    <div className="card dashboard-card mb-6">
                         <div
                             className="card-header"
                             style={{ cursor: 'pointer' }}
                             onClick={() => setOffendersExpanded(!offendersExpanded)}
                         >
                             <div className="flex items-center gap-2">
-                                <h3 className="card-title">Repeat Offenders</h3>
-                                <span className="badge badge-danger">{offenders.length} flagged</span>
+                                <h3 className="card-title">{t('Top 5 Repeat Offenders (Missing PPE)')}</h3>
+                                <span className="badge badge-danger">{t('High Risk')}</span>
                             </div>
                             {offendersExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </div>
@@ -435,21 +529,23 @@ function Dashboard() {
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Person</th>
-                                            <th>Video</th>
-                                            <th>Violations</th>
-                                            <th>Most Common</th>
-                                            <th>Risk</th>
-                                            <th></th>
+                                            <th>{t('Person')}</th>
+                                            <th>{t('Video')}</th>
+                                            <th>{t('Violations')}</th>
+                                            <th>{t('Most Common')}</th>
+                                            <th>{t('Risk')}</th>
+                                            <th>{t('Action')}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {offenders.slice(0, 10).map((offender) => (
+                                        {offenders.slice(0, 5).map((offender) => (
                                             <tr key={offender.individual_id}>
                                                 <td>
-                                                    <span className="font-semibold">Person #{offender.track_id}</span>
+                                                    <span className="font-semibold">{t('Person')} #{offender.track_id}</span>
                                                 </td>
-                                                <td>Video #{offender.video_id}</td>
+                                                <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {offender.video_name || `Video #${offender.video_id}`}
+                                                </td>
                                                 <td>
                                                     <span className="badge badge-warning">{offender.total_violations}</span>
                                                 </td>
@@ -463,10 +559,10 @@ function Dashboard() {
                                                 </td>
                                                 <td>
                                                     <Link
-                                                        to={`/individuals/${offender.video_id}`}
-                                                        className="btn btn-ghost btn-sm"
+                                                        to={`/individuals/${offender.video_id}?track_id=${offender.track_id}`}
+                                                        className="btn btn-primary btn-sm"
                                                     >
-                                                        View
+                                                        {t('View Record')}
                                                     </Link>
                                                 </td>
                                             </tr>
@@ -481,17 +577,17 @@ function Dashboard() {
                 {/* Quick Actions */}
                 <div className="card">
                     <div className="card-header">
-                        <h3 className="card-title">Quick Actions</h3>
+                        <h3 className="card-title">{t('Quick Actions')}</h3>
                     </div>
                     <div className="card-body">
                         <div className="flex gap-4">
                             <Link to="/videos" className="btn btn-primary">
                                 <Video size={16} />
-                                Upload New Video
+                                {t('Upload New Video')}
                             </Link>
                             <Link to="/violations?review_status=pending" className="btn btn-secondary">
                                 <AlertTriangle size={16} />
-                                Review Pending ({stats?.pending_violations || 0})
+                                {t('Review Pending')} ({stats?.pending_violations || 0})
                             </Link>
                         </div>
                     </div>

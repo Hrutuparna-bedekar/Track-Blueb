@@ -1,18 +1,20 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { Sun, Moon, ArrowRight } from 'lucide-react'
+import { Sun, Moon, ArrowRight, Languages } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { useLanguage } from '../context/LanguageContext'
 
 function Layout() {
     const { theme, toggleTheme } = useTheme()
+    const { language, toggleLanguage, t } = useLanguage()
     const location = useLocation()
     const isLandingPage = location.pathname === '/'
 
     const navItems = [
-        { path: '/dashboard', label: 'Dashboard' },
-        { path: '/videos', label: 'Videos' },
-        { path: '/webcam', label: 'Webcam' },
-        { path: '/search', label: 'Search Violations' },
-        { path: '/violations', label: 'Violations' },
+        { path: '/dashboard', label: t('Dashboard') },
+        { path: '/videos', label: t('Videos') },
+        { path: '/webcam', label: t('Webcam') },
+        { path: '/search', label: t('Search Violations') },
+        { path: '/violations', label: t('Violations') },
     ]
 
     return (
@@ -20,7 +22,7 @@ function Layout() {
             {/* Floating Navbar */}
             <nav className="navbar">
                 <NavLink to="/" className="navbar-brand">
-                    <span className="navbar-brand-text">VioTrack</span>
+                    <span className="navbar-brand-text">{t('VioTrack')}</span>
                 </NavLink>
 
                 <div className="navbar-nav">
@@ -40,6 +42,17 @@ function Layout() {
                 <div className="navbar-actions">
                     <button
                         className="theme-toggle"
+                        onClick={toggleLanguage}
+                        aria-label="Switch Language"
+                        title={language === 'en' ? 'Switch to Hindi' : 'अंग्रेजी में बदलें'}
+                    >
+                        <div className="flex items-center gap-1 font-bold text-sm">
+                            <Languages size={18} />
+                            {language === 'en' ? 'EN' : 'HI'}
+                        </div>
+                    </button>
+                    <button
+                        className="theme-toggle"
                         onClick={toggleTheme}
                         aria-label="Toggle theme"
                     >
@@ -47,7 +60,7 @@ function Layout() {
                     </button>
                     {isLandingPage && (
                         <NavLink to="/dashboard" className="btn btn-primary btn-sm">
-                            Get Started <ArrowRight size={14} />
+                            {t('Get Started')} <ArrowRight size={14} />
                         </NavLink>
                     )}
                 </div>

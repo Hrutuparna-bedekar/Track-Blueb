@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import {
     ArrowLeft,
     Users,
@@ -14,6 +14,9 @@ import { getIndividuals, getIndividual, analyzeIndividual, getViolations } from 
 
 function Individuals() {
     const { videoId } = useParams()
+    const [searchParams] = useSearchParams()
+    const trackIdParam = searchParams.get('track_id')
+
     const [individuals, setIndividuals] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -42,6 +45,23 @@ function Individuals() {
     useEffect(() => {
         fetchIndividuals()
     }, [videoId])
+
+    // Auto-select individual from query param
+    useEffect(() => {
+        if (!loading && individuals.length > 0 && trackIdParam) {
+            const targetInd = individuals.find(ind => ind.track_id.toString() === trackIdParam)
+            // Only select if not already selected to avoid infinite loops or re-fetching
+            if (targetInd && (!selectedIndividual || selectedIndividual.track_id.toString() !== trackIdParam)) {
+                handleSelectIndividual(targetInd)
+
+                // Scroll to the individual item
+                setTimeout(() => {
+                    const el = document.getElementById(`person-${targetInd.track_id}`)
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }, 500)
+            }
+        }
+    }, [loading, individuals, trackIdParam])
 
     const handleSelectIndividual = async (individual) => {
         if (selectedIndividual?.id === individual.id) {
@@ -143,6 +163,7 @@ function Individuals() {
                                     return (
                                         <div
                                             key={ind.id}
+                                            id={`person-${ind.track_id}`}
                                             className={`flex items-center gap-4 p-4 cursor-pointer transition-all ${isSelected ? 'bg-[var(--bg-tertiary)]' : ''
                                                 }`}
                                             style={{

@@ -71,6 +71,10 @@ class ViolationDetector:
         self.model = None
         self.class_names = {}
         
+        # Determine device
+        import torch
+        self.device = 0 if torch.cuda.is_available() else 'cpu'
+        
         self._load_model()
     
     def _load_model(self):
@@ -79,7 +83,7 @@ class ViolationDetector:
             self.model = YOLO(self.model_path)
             if hasattr(self.model, 'names'):
                 self.class_names = self.model.names
-            logger.info(f"Loaded YOLO model from {self.model_path}")
+            logger.info(f"Loaded YOLO model from {self.model_path} on device: {self.device}")
             logger.info(f"Model classes: {self.class_names}")
             
             # Log which classes will be tracked
@@ -115,6 +119,7 @@ class ViolationDetector:
             frame,
             conf=self.confidence_threshold,
             iou=self.iou_threshold,
+            device=self.device,
             verbose=False
         )
         
