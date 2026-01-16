@@ -29,8 +29,9 @@ def get_webcam_pipeline() -> VideoPipeline:
     """Get or create the webcam pipeline instance."""
     global _webcam_pipeline
     if _webcam_pipeline is None:
-        _webcam_pipeline = VideoPipeline()
-        logger.info("Initialized webcam pipeline")
+        # Use the webcam-specific model (old.pt) instead of the default video model
+        _webcam_pipeline = VideoPipeline(model_path=settings.WEBCAM_MODEL_PATH)
+        logger.info(f"Initialized webcam pipeline with model: {settings.WEBCAM_MODEL_PATH}")
     return _webcam_pipeline
 
 
@@ -149,7 +150,7 @@ async def webcam_stream(websocket: WebSocket):
                 # Get recent violations for live display
                 recent_violations = []
                 for p in profiles.values():
-                    for v in p.violations[-3:]:  # Last 3 violations per person
+                    for v in p.violations:  # All violations per person
                         recent_violations.append({
                             "person_id": p.track_id,
                             "type": v.violation_type,
@@ -169,7 +170,7 @@ async def webcam_stream(websocket: WebSocket):
                         "frame_num": frame_num,
                         "persons": persons_count,
                         "total_violations": total_violations,
-                        "recent_violations": recent_violations[-10:]  # Last 10 overall
+                        "recent_violations": recent_violations  # All violations
                     },
                     "session_violations": session_violations,  # Full list for review
                     "person_ppe": person_ppe  # PPE worn by each person

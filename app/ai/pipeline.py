@@ -28,28 +28,24 @@ logger = logging.getLogger(__name__)
 VIOLATION_CAPTURE_COOLDOWN = 2.0
 
 # Body part detections that indicate missing PPE
-# If we detect these body parts, it means the person is NOT wearing the required PPE
-BODY_PART_VIOLATIONS = {
-    'head': 'No Helmet',      # head visible = no helmet
-    'face': 'No Face Mask',   # face visible = no face mask  
-    'foot': 'No Safety Boots', # foot visible = no boots
-    'eyes': 'No Goggles',     # eyes visible = no goggles/glasses
-    'eye': 'No Goggles',      # eye visible = no goggles/glasses
+# Maps body part -> (violation_type, PPE items that would prevent violation)
+# NOTE: 'eyes'/'eye' removed - goggles uses class-based detection with buffer
+# NOTE: 'head' removed - helmet uses class-based detection for each person
+BODY_PART_TO_VIOLATION = {
+    'face': ('No Face Mask', ['face-mask', 'facemask', 'mask', 'face mask']),
+    'foot': ('No Safety Boots', ['boots', 'shoes', 'safety-boots', 'safety boots']),
+    'feet': ('No Safety Boots', ['boots', 'shoes', 'safety-boots', 'safety boots']),
+    'hand': ('No Gloves', ['gloves', 'glove']),
+    'hands': ('No Gloves', ['gloves', 'glove']),
 }
+
+# Goggles detection buffer in seconds (wait this long before triggering No Goggles violation)
+GOGGLES_DETECTION_BUFFER = 1.0
 
 # PPE equipment classes that indicate COMPLIANCE (wearing PPE)
-# If we detect these, the person IS wearing PPE (not a violation)
 PPE_EQUIPMENT = ['helmet', 'face-mask', 'facemask', 'mask', 'glasses', 'goggles', 
-                 'shoes', 'boots', 'safety-glasses', 'safety-vest', 'gloves']
+                 'shoes', 'boots', 'safety-glasses', 'safety-vest', 'gloves', 'glove']
 
-# Mapping from violation types to PPE equipment that would prevent the violation
-# If a person is detected wearing any of these PPE items, skip the corresponding violation
-VIOLATION_TO_PPE = {
-    'No Helmet': ['helmet'],
-    'No Face Mask': ['face-mask', 'facemask', 'mask'],
-    'No Safety Boots': ['shoes', 'boots'],
-    'No Goggles': ['glasses', 'goggles', 'safety-glasses', 'safety glasses', 'eye protection']
-}
 
 
 class PersonTracker:
@@ -230,6 +226,10 @@ class VideoPipeline:
         # If PPE is detected, corresponding violations are skipped
         self.person_worn_ppe: Dict[int, set] = {}
         
+        # Track when goggles were last seen for each person (for 1-second buffer)
+        # track_id -> last_seen_timestamp (seconds)
+        self.person_goggles_last_seen: Dict[int, float] = {}
+        
         # Detected PPE equipment for the equipment tab
         self.detected_equipment: List[dict] = []
         
@@ -251,26 +251,10 @@ class VideoPipeline:
         self.track_first_seen = {}
         self.captured_violations = set()
         self.person_worn_ppe = {}
+        self.person_goggles_last_seen = {}
         self.detected_equipment = []
         # Reset model
         self.model = YOLO(self.model_path)
-    
-    def _is_violation(self, class_name: str) -> Tuple[bool, str]:
-        """
-        Check if a detected class indicates a violation.
-        
-        Body parts visible = missing PPE = violation
-        Only checks for: helmet (head), face-mask (face), boots (foot)
-        """
-        class_lower = class_name.lower()
-        
-        # Check if it's a body part that indicates missing PPE
-        for body_part, violation_type in BODY_PART_VIOLATIONS.items():
-            if body_part == class_lower:
-                return True, violation_type
-        
-        # Not a violation
-        return False, class_name
     
     def _is_ppe_equipment(self, class_name: str) -> bool:
         """Check if class is PPE equipment (indicates compliance)."""
@@ -291,7 +275,15 @@ class VideoPipeline:
         
         If a person is detected wearing PPE at any point, they don't get violations
         for that missing PPE type.
+        
+        NOTE: 'No Goggles', 'No Gloves', 'No Safety Boots', and 'No Face Mask' are handled 
+        dynamically per-frame, not by cumulative tracking, so they're excluded from this skip logic.
         """
+        # These violations are now handled dynamically per-frame, don't use cumulative skip
+        DYNAMIC_VIOLATIONS = ['No Helmet', 'No Goggles', 'No Gloves', 'No Safety Boots', 'No Face Mask']
+        if violation_type in DYNAMIC_VIOLATIONS:
+            return False
+        
         worn_ppe = self.person_worn_ppe.get(track_id, set())
         required_ppe = VIOLATION_TO_PPE.get(violation_type, [])
         
@@ -520,6 +512,31 @@ class VideoPipeline:
         person_detections = []  # List of (bbox, conf) for PersonTracker
         violations = []  # List of (bbox, vtype, conf)
         ppe_items = []  # List of (bbox, cls_name, conf)
+        body_parts = []  # List of (bbox, part_name, conf) for body parts like face, eyes, head
+        
+        # Keywords that indicate explicit "no-PPE" violations from the model
+        NO_PPE_KEYWORDS = {
+            'no-mask': 'No Face Mask', 'no_mask': 'No Face Mask', 'no mask': 'No Face Mask', 'nomask': 'No Face Mask',
+            'no-goggles': 'No Goggles', 'no_goggles': 'No Goggles', 'no goggles': 'No Goggles', 'nogoggles': 'No Goggles',
+            'no-glasses': 'No Goggles', 'no_glasses': 'No Goggles', 'no glasses': 'No Goggles',
+            'no-helmet': 'No Helmet', 'no_helmet': 'No Helmet', 'no helmet': 'No Helmet', 'nohelmet': 'No Helmet',
+            'no-boots': 'No Safety Boots', 'no_boots': 'No Safety Boots', 'no boots': 'No Safety Boots',
+            'no-gloves': 'No Gloves', 'no_gloves': 'No Gloves', 'no gloves': 'No Gloves',
+            'no-vest': 'No Safety Vest', 'no_vest': 'No Safety Vest', 'no vest': 'No Safety Vest',
+        }
+        
+        # Body parts that indicate potential missing PPE (triggers violation if PPE not detected)
+        # Maps body part -> (violation_type, PPE items that would prevent violation)
+        BODY_PART_TO_VIOLATION = {
+            'face': ('No Face Mask', ['face-mask', 'facemask', 'mask', 'face mask']),
+            'eyes': ('No Goggles', ['glasses', 'goggles', 'safety-glasses', 'eye protection']),
+            'eye': ('No Goggles', ['glasses', 'goggles', 'safety-glasses', 'eye protection']),
+            'head': ('No Helmet', ['helmet', 'hard hat', 'hardhat']),
+            'hand': ('No Gloves', ['gloves', 'glove']),
+            'hands': ('No Gloves', ['gloves', 'glove']),
+            'foot': ('No Safety Boots', ['boots', 'shoes', 'safety-boots']),
+            'feet': ('No Safety Boots', ['boots', 'shoes', 'safety-boots']),
+        }
         
         for i in range(len(boxes)):
             xyxy = boxes.xyxy[i].cpu().numpy()
@@ -528,14 +545,26 @@ class VideoPipeline:
             cls_id = int(boxes.cls[i].cpu().numpy())
             cls_name = self.class_names.get(cls_id, f"class_{cls_id}")
             bbox = (x1, y1, x2, y2)
+            cls_lower = cls_name.lower()
             
-            if cls_name.lower() == 'person':
+            if cls_lower == 'person':
                 person_detections.append((bbox, conf))
             else:
-                is_violation, vtype = self._is_violation(cls_name)
-                if is_violation:
-                    violations.append((bbox, vtype, conf))
+                # Check if this is an explicit "no-PPE" detection from the model
+                violation_type = None
+                for keyword, vtype in NO_PPE_KEYWORDS.items():
+                    if keyword in cls_lower:
+                        violation_type = vtype
+                        break
+                
+                if violation_type:
+                    # Model explicitly detected a violation (e.g., "no-mask", "no-goggles")
+                    violations.append((bbox, violation_type, conf))
+                elif cls_lower in BODY_PART_TO_VIOLATION:
+                    # Body part detected - track for later conditional violation check
+                    body_parts.append((bbox, cls_lower, conf))
                 elif self._is_ppe_equipment(cls_name):
+                    # PPE equipment detected (compliance)
                     ppe_items.append((bbox, cls_name, conf))
                     # Record PPE for equipment tab
                     self.detected_equipment.append({
@@ -595,6 +624,9 @@ class VideoPipeline:
         
         # PROCESS PPE FIRST - Associate PPE with person ONLY if PPE is inside person's bbox
         # This is stricter than find_closest_person to prevent cross-person PPE association
+        # Also track CURRENT FRAME's PPE per person (for dynamic goggles detection)
+        current_frame_ppe = {}  # track_id -> set of PPE in THIS frame only
+        
         for ppe_bbox, cls_name, conf in ppe_items:
             ex1, ey1, ex2, ey2 = ppe_bbox
             cv2.rectangle(annotated, (ex1, ey1), (ex2, ey2), (255, 0, 0), 2)
@@ -611,35 +643,145 @@ class VideoPipeline:
                 tolerance = 30  # pixels
                 if (px1 - tolerance <= ppe_cx <= px2 + tolerance and 
                     py1 - tolerance <= ppe_cy <= py2 + tolerance):
+                    # Record for cumulative tracking (for other violations)
                     self._record_person_ppe(person_tid, cls_name)
+                    # Also record for CURRENT FRAME tracking (for dynamic goggles)
+                    if person_tid not in current_frame_ppe:
+                        current_frame_ppe[person_tid] = set()
+                    current_frame_ppe[person_tid].add(cls_name.lower())
                     break  # Only associate with one person
         
-        # Inference-based No Goggles detection:
-        # If person doesn't have goggles/glasses detected, trigger No Goggles violation
-        GOGGLES_PPE_ITEMS = ['glasses', 'goggles', 'safety-glasses', 'safety glasses', 'eye protection']
+        # GOGGLES DETECTION WITH 1-SECOND BUFFER:
+        # ONLY CHECK IF FACE IS DETECTED for this person
+        # Detection is purely based on goggles/glasses class presence
+        # If goggles are detected -> no violation, update last seen time
+        # If goggles NOT detected for 1+ seconds -> trigger violation
+        GOGGLES_CLASSES = ['glasses', 'goggles', 'safety-glasses', 'safety glasses', 'eye protection', 'eyeglasses']
+        
+        # Helper: check if face is detected near a person
+        def is_face_detected_for_person(person_bbox):
+            """Check if any 'face' body part is detected near this person."""
+            px1, py1, px2, py2 = person_bbox
+            for body_bbox, body_part, _ in body_parts:
+                if body_part == 'face':
+                    # Check if face bbox overlaps with person bbox
+                    bx1, by1, bx2, by2 = body_bbox
+                    face_cx, face_cy = (bx1 + bx2) / 2, (by1 + by2) / 2
+                    # Face center should be inside person bbox (with tolerance)
+                    tolerance = 50
+                    if (px1 - tolerance <= face_cx <= px2 + tolerance and
+                        py1 - tolerance <= face_cy <= py2 + tolerance):
+                        return True
+            return False
         
         for person_bbox, track_id, person_conf in persons:
-            # Check if this person has goggles/glasses in their worn PPE
-            person_ppe = self.person_worn_ppe.get(track_id, set())
-            has_goggles = False
+            # ONLY check goggles if face is detected for this person
+            if not is_face_detected_for_person(person_bbox):
+                # No face detected - skip goggles check, reset timer
+                if track_id in self.person_goggles_last_seen:
+                    del self.person_goggles_last_seen[track_id]
+                continue
+            
+            # Face is detected - now check for goggles
+            person_ppe = current_frame_ppe.get(track_id, set())
+            
+            # Check if goggles detected for this person in current frame
+            goggles_detected = False
             for ppe_item in person_ppe:
-                ppe_lower = ppe_item.lower()
-                for goggles_type in GOGGLES_PPE_ITEMS:
-                    if goggles_type in ppe_lower:
-                        has_goggles = True
+                for goggles_type in GOGGLES_CLASSES:
+                    if goggles_type in ppe_item or ppe_item in goggles_type:
+                        goggles_detected = True
                         break
-                if has_goggles:
+                if goggles_detected:
                     break
             
-            # If no goggles detected, add to violations list (let the main loop process it)
-            # Only add once per person - check captured_violations
-            if not has_goggles:
-                vtype = 'No Goggles'
-                key = (track_id, vtype)
-                if key not in self.captured_violations:
-                    px1, py1, px2, py2 = person_bbox
-                    violations.append(((int(px1), int(py1), int(px2), int(py2)), vtype, 0.85))
-                    logger.info(f"Adding No Goggles violation for Person-{track_id}")
+            if goggles_detected:
+                # Goggles detected - update last seen time, no violation
+                self.person_goggles_last_seen[track_id] = timestamp
+            else:
+                # Goggles NOT detected - check if 1 second buffer has passed
+                last_seen = self.person_goggles_last_seen.get(track_id, -999)  # -999 means never seen
+                
+                if last_seen == -999:
+                    # First time seeing this person without goggles - start the timer
+                    self.person_goggles_last_seen[track_id] = timestamp
+                else:
+                    time_without_goggles = timestamp - last_seen
+                    if time_without_goggles >= GOGGLES_DETECTION_BUFFER:
+                        # 1 second has passed without goggles - trigger violation
+                        violations.append((person_bbox, 'No Goggles', 0.8))
+                        if frame_num % 30 == 0:
+                            logger.info(f"No Goggles violation for Person-{track_id} (no goggles for {time_without_goggles:.1f}s)")
+        
+        # HELMET DETECTION (per-person, no delay):
+        # For each person, check if helmet is detected - if not, trigger violation immediately
+        HELMET_CLASSES = ['helmet', 'hard hat', 'hardhat', 'safety helmet']
+        
+        for person_bbox, track_id, person_conf in persons:
+            person_ppe = current_frame_ppe.get(track_id, set())
+            
+            # Check if helmet detected for this person
+            helmet_detected = False
+            for ppe_item in person_ppe:
+                for helmet_type in HELMET_CLASSES:
+                    if helmet_type in ppe_item or ppe_item in helmet_type:
+                        helmet_detected = True
+                        break
+                if helmet_detected:
+                    break
+            
+            if not helmet_detected:
+                # No helmet detected - trigger violation
+                violations.append((person_bbox, 'No Helmet', 0.8))
+                if frame_num % 30 == 0:
+                    logger.info(f"No Helmet violation for Person-{track_id}")
+        
+        # BODY PART BASED VIOLATION DETECTION:
+        # For each detected body part, check if corresponding PPE is detected in current frame
+        # If NOT, create a violation
+        # This supports models that detect body parts (like old.pt) instead of explicit "no-X" classes
+        
+        # Use module-level BODY_PART_TO_VIOLATION constant
+        
+        # Get all PPE detected in this frame (globally, not per-person)
+        all_ppe_this_frame = set()
+        for _, cls_name, _ in ppe_items:
+            all_ppe_this_frame.add(cls_name.lower())
+        
+        for body_bbox, body_part, body_conf in body_parts:
+            if body_part not in BODY_PART_TO_VIOLATION:
+                continue
+            
+            violation_type, preventing_ppe = BODY_PART_TO_VIOLATION[body_part]
+            
+            # Check if any of the preventing PPE is detected in this frame
+            ppe_found = False
+            for ppe_item in all_ppe_this_frame:
+                for preventing in preventing_ppe:
+                    if preventing in ppe_item or ppe_item in preventing:
+                        ppe_found = True
+                        break
+                if ppe_found:
+                    break
+            
+            # Also check person-specific PPE
+            closest = find_closest_person(body_bbox)
+            if closest and not ppe_found:
+                _, track_id = closest
+                person_ppe = current_frame_ppe.get(track_id, set())
+                for ppe_item in person_ppe:
+                    for preventing in preventing_ppe:
+                        if preventing in ppe_item or ppe_item in preventing:
+                            ppe_found = True
+                            break
+                    if ppe_found:
+                        break
+            
+            if not ppe_found:
+                # No corresponding PPE detected - this is a violation
+                violations.append((body_bbox, violation_type, body_conf))
+                if frame_num % 30 == 0:
+                    logger.info(f"Body part '{body_part}' detected without PPE -> {violation_type}")
         
         # THEN Process violations - skip if person has worn corresponding PPE
         for vbox, vtype, conf in violations:

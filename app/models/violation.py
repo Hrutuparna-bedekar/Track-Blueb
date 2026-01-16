@@ -59,7 +59,7 @@ class Violation(Base):
     review_status = Column(String(50), default=ReviewStatus.PENDING.value)
     
     # Timestamps
-    detected_at = Column(DateTime, default=datetime.utcnow)
+    detected_at = Column(DateTime, default=datetime.now)
     reviewed_at = Column(DateTime, nullable=True)
     
     # Relationships

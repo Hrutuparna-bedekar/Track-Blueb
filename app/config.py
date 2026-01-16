@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: list = [".mp4", ".avi", ".mov", ".mkv"]
     
     # AI Pipeline - Detection
-    YOLO_MODEL_PATH: str = "ppe_model.pt"
+    YOLO_MODEL_PATH: str = "ppe_model.pt"  # For video upload analysis
+    WEBCAM_MODEL_PATH: str = "old.pt"       # For webcam analysis
     CONFIDENCE_THRESHOLD: float = 0.55  # Lowered for better goggles detection (was 0.75)
     IOU_THRESHOLD: float = 0.1  # Non-max suppression IOU threshold
     

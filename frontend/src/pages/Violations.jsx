@@ -444,7 +444,7 @@ function Violations() {
                     </div>
                 ) : (
                     <>
-                        {/* Grouped by Video */}
+                        {/* Grouped by Video, then by Person */}
                         {Object.entries(groupedViolations).map(([videoName, videoData]) => (
                             <div key={videoName} className="card mb-6">
                                 <div className="card-header">
@@ -457,104 +457,195 @@ function Violations() {
                                     </span>
                                 </div>
                                 <div className="card-body">
-                                    <div style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                        gap: '1rem'
-                                    }}>
-                                        {videoData.violations.map(violation => (
-                                            <div
-                                                key={violation.id}
-                                                className="card"
-                                                style={{
-                                                    border: selectedViolations.includes(violation.id)
-                                                        ? '2px solid var(--accent-primary)'
-                                                        : '1px solid var(--border)',
-                                                    cursor: 'pointer'
-                                                }}
-                                                onClick={() => toggleViolation(violation.id)}
-                                            >
-                                                {/* Violation Image */}
-                                                <div style={{
-                                                    height: 180,
-                                                    background: 'var(--bg-tertiary)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    overflow: 'hidden',
-                                                    borderRadius: '12px 12px 0 0'
-                                                }}>
-                                                    {violation.image_path ? (
-                                                        <img
-                                                            src={violation.image_path}
-                                                            alt={`${violation.violation_type} violation`}
-                                                            style={{
-                                                                width: '100%',
-                                                                height: '100%',
-                                                                objectFit: 'cover'
-                                                            }}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                setExpandedImage(violation.image_path)
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <div className="text-muted flex flex-col items-center gap-2">
-                                                            <Image size={32} />
-                                                            <span className="text-sm">No image</span>
+                                    {(() => {
+                                        // Group violations by person (individual_id)
+                                        const groupedByPerson = videoData.violations.reduce((acc, v) => {
+                                            const personKey = v.individual_id || v.track_id || 'unknown'
+                                            if (!acc[personKey]) {
+                                                acc[personKey] = []
+                                            }
+                                            acc[personKey].push(v)
+                                            return acc
+                                        }, {})
+
+                                        // Sort person keys numerically
+                                        const sortedPersonKeys = Object.keys(groupedByPerson).sort((a, b) => {
+                                            if (a === 'unknown') return 1
+                                            if (b === 'unknown') return -1
+                                            return parseInt(a) - parseInt(b)
+                                        })
+
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                                {sortedPersonKeys.map((personKey, personIndex) => {
+                                                    const personViolations = groupedByPerson[personKey]
+                                                    return (
+                                                        <div key={personKey} style={{
+                                                            background: 'var(--bg-tertiary)',
+                                                            borderRadius: 12,
+                                                            overflow: 'hidden',
+                                                            border: '1px solid var(--border-color)'
+                                                        }}>
+                                                            {/* Person Header/Tag */}
+                                                            <div style={{
+                                                                padding: '12px 16px',
+                                                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between'
+                                                            }}>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div style={{
+                                                                        width: 36,
+                                                                        height: 36,
+                                                                        borderRadius: '50%',
+                                                                        background: 'rgba(255,255,255,0.25)',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        color: 'white',
+                                                                        border: '2px solid rgba(255,255,255,0.4)'
+                                                                    }}>
+                                                                        <User size={18} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style={{
+                                                                            color: 'white',
+                                                                            fontWeight: 700,
+                                                                            fontSize: '0.95rem',
+                                                                            textTransform: 'uppercase',
+                                                                            letterSpacing: '0.5px'
+                                                                        }}>
+                                                                            Person {personIndex + 1}
+                                                                        </div>
+                                                                        <div style={{
+                                                                            color: 'rgba(255,255,255,0.8)',
+                                                                            fontSize: '0.7rem'
+                                                                        }}>
+                                                                            ID: {personKey}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <span style={{
+                                                                    background: 'rgba(255,255,255,0.25)',
+                                                                    color: 'white',
+                                                                    padding: '5px 12px',
+                                                                    borderRadius: 16,
+                                                                    fontWeight: 600,
+                                                                    fontSize: '0.8rem',
+                                                                    border: '1px solid rgba(255,255,255,0.3)'
+                                                                }}>
+                                                                    {personViolations.length} violation{personViolations.length !== 1 ? 's' : ''}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* Person's Violations Grid */}
+                                                            <div style={{
+                                                                padding: 16,
+                                                                display: 'grid',
+                                                                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                                                                gap: '1rem'
+                                                            }}>
+                                                                {personViolations.map(violation => (
+                                                                    <div
+                                                                        key={violation.id}
+                                                                        className="card"
+                                                                        style={{
+                                                                            border: selectedViolations.includes(violation.id)
+                                                                                ? '2px solid var(--accent-primary)'
+                                                                                : '1px solid var(--border)',
+                                                                            cursor: 'pointer',
+                                                                            background: 'var(--bg-surface)'
+                                                                        }}
+                                                                        onClick={() => toggleViolation(violation.id)}
+                                                                    >
+                                                                        {/* Violation Image */}
+                                                                        <div style={{
+                                                                            height: 160,
+                                                                            background: 'var(--bg-tertiary)',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            overflow: 'hidden',
+                                                                            borderRadius: '12px 12px 0 0'
+                                                                        }}>
+                                                                            {violation.image_path ? (
+                                                                                <img
+                                                                                    src={violation.image_path}
+                                                                                    alt={`${violation.violation_type} violation`}
+                                                                                    style={{
+                                                                                        width: '100%',
+                                                                                        height: '100%',
+                                                                                        objectFit: 'cover'
+                                                                                    }}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        setExpandedImage(violation.image_path)
+                                                                                    }}
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="text-muted flex flex-col items-center gap-2">
+                                                                                    <Image size={32} />
+                                                                                    <span className="text-sm">No image</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="card-body" style={{ padding: '0.875rem' }}>
+                                                                            {/* Type and Status */}
+                                                                            <div className="flex items-center justify-between mb-2">
+                                                                                <span className="font-semibold" style={{ color: 'var(--danger)' }}>
+                                                                                    {violation.violation_type}
+                                                                                </span>
+                                                                                {getStatusBadge(violation.review_status)}
+                                                                            </div>
+
+                                                                            {/* Details */}
+                                                                            <div className="text-sm text-muted mb-3">
+                                                                                <div>Detected: {formatDateTime(violation.detected_at)}</div>
+                                                                                <div>Video Time: {formatTimestamp(violation.timestamp)}</div>
+                                                                                <div>Confidence: {Math.round(violation.confidence * 100)}%</div>
+                                                                            </div>
+
+                                                                            {/* Review Actions */}
+                                                                            {violation.review_status === 'pending' && (
+                                                                                <div className="flex gap-2">
+                                                                                    <button
+                                                                                        className="btn btn-success btn-sm"
+                                                                                        style={{ flex: 1 }}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation()
+                                                                                            handleReview(violation.id, true)
+                                                                                        }}
+                                                                                        disabled={submitting}
+                                                                                    >
+                                                                                        <CheckCircle size={14} />
+                                                                                        Confirm
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger btn-sm"
+                                                                                        style={{ flex: 1 }}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation()
+                                                                                            handleReview(violation.id, false)
+                                                                                        }}
+                                                                                        disabled={submitting}
+                                                                                    >
+                                                                                        <XCircle size={14} />
+                                                                                        Reject
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="card-body" style={{ padding: '1rem' }}>
-                                                    {/* Type and Status */}
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="font-semibold" style={{ color: 'var(--danger)' }}>
-                                                            {violation.violation_type}
-                                                        </span>
-                                                        {getStatusBadge(violation.review_status)}
-                                                    </div>
-
-                                                    {/* Details */}
-                                                    <div className="text-sm text-muted mb-3">
-                                                        <div>Detected: {formatDateTime(violation.detected_at)}</div>
-                                                        <div>Video Time: {formatTimestamp(violation.timestamp)}</div>
-                                                        <div>Confidence: {Math.round(violation.confidence * 100)}%</div>
-                                                    </div>
-
-                                                    {/* Review Actions */}
-                                                    {violation.review_status === 'pending' && (
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                className="btn btn-success btn-sm"
-                                                                style={{ flex: 1 }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    handleReview(violation.id, true)
-                                                                }}
-                                                                disabled={submitting}
-                                                            >
-                                                                <CheckCircle size={14} />
-                                                                Confirm
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-danger btn-sm"
-                                                                style={{ flex: 1 }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    handleReview(violation.id, false)
-                                                                }}
-                                                                disabled={submitting}
-                                                            >
-                                                                <XCircle size={14} />
-                                                                Reject
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                    )
+                                                })}
                                             </div>
-                                        ))}
-                                    </div>
+                                        )
+                                    })()}
                                 </div>
                             </div>
                         ))}

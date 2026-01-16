@@ -49,7 +49,7 @@
   --glass-border: rgba(255, 255, 255, 0.1);
 
   /* Grid Background */
-  --grid-color: rgba(255, 255, 255, 0.03);
+  --grid-color: rgba(255, 255, 255, 0.12);
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -112,7 +112,7 @@
   --glass-bg: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(0, 0, 0, 0.08);
 
-  --grid-color: rgba(0, 0, 0, 0.03);
+  --grid-color: rgba(0, 0, 0, 0.12);
 }
 
 /* ========================================
@@ -1485,7 +1485,7 @@ textarea.form-input {
   .webcam-container {
     grid-template-columns: 1fr;
   }
-  
+
   .webcam-sidebar {
     order: 2;
   }

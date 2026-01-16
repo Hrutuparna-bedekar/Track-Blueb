@@ -149,6 +149,8 @@ async def list_videos(
             annotated_video_path=video.annotated_video_path,
             uploaded_at=video.uploaded_at,
             processed_at=video.processed_at,
+            is_reviewed=bool(video.is_reviewed),
+            reviewed_at=video.reviewed_at,
             total_individuals=total_individuals,
             total_violations=total_violations
         ))
@@ -194,8 +196,11 @@ async def get_video(
         status=video.status,
         processing_progress=video.processing_progress,
         error_message=video.error_message,
+        annotated_video_path=video.annotated_video_path,
         uploaded_at=video.uploaded_at,
         processed_at=video.processed_at,
+        is_reviewed=bool(video.is_reviewed),
+        reviewed_at=video.reviewed_at,
         total_individuals=total_individuals
     )
 
@@ -260,3 +265,76 @@ async def delete_video(
     await db.commit()
     
     return {"message": "Video deleted successfully"}
+
+
+@router.put("/{video_id}/review")
+async def mark_video_reviewed(
+    video_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mark a video as reviewed.
+    
+    Once a video is marked as reviewed, it will appear in the Search Violations
+    database and its summary will be visible.
+    """
+    from datetime import datetime
+    
+    result = await db.execute(
+        select(Video).where(Video.id == video_id)
+    )
+    video = result.scalar_one_or_none()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if video.status != "completed":
+        raise HTTPException(
+            status_code=400, 
+            detail="Video must be fully processed before it can be reviewed"
+        )
+    
+    # Mark as reviewed
+    video.is_reviewed = 1
+    video.reviewed_at = datetime.now()
+    
+    await db.commit()
+    await db.refresh(video)
+    
+    return {
+        "message": "Video marked as reviewed successfully",
+        "video_id": video.id,
+        "is_reviewed": True,
+        "reviewed_at": video.reviewed_at.isoformat() if video.reviewed_at else None
+    }
+
+
+@router.put("/{video_id}/unreview")
+async def unmark_video_reviewed(
+    video_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Remove review status from a video.
+    
+    The video will no longer appear in the Search Violations database.
+    """
+    result = await db.execute(
+        select(Video).where(Video.id == video_id)
+    )
+    video = result.scalar_one_or_none()
+    
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    # Remove review status
+    video.is_reviewed = 0
+    video.reviewed_at = None
+    
+    await db.commit()
+    
+    return {
+        "message": "Video review status removed",
+        "video_id": video.id,
+        "is_reviewed": False
+    }

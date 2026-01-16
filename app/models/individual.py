@@ -43,7 +43,7 @@ class TrackedIndividual(Base):
     # PPE worn by this individual (comma-separated list)
     worn_equipment = Column(String, default="")  # e.g., "helmet,gloves,boots"
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     
     # Relationships
     video = relationship("Video", back_populates="individuals")

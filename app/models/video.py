@@ -53,8 +53,12 @@ class Video(Base):
     # Time-of-day shift when video was recorded
     shift = Column(String(50), nullable=True)  # morning, evening, night
     
+    # Review status - video must be reviewed before appearing in search
+    is_reviewed = Column(Integer, default=0)  # 0 = not reviewed, 1 = reviewed
+    reviewed_at = Column(DateTime, nullable=True)
+    
     # Timestamps
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=datetime.now)
     processed_at = Column(DateTime, nullable=True)
     
     # Relationships

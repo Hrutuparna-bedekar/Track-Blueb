@@ -9,9 +9,11 @@ import {
     CheckCircle,
     XCircle,
     Play,
-    RefreshCw
+    RefreshCw,
+    ClipboardCheck,
+    Search
 } from 'lucide-react'
-import { getVideo, getVideoStatus, getIndividuals, getViolations } from '../services/api'
+import { getVideo, getVideoStatus, getIndividuals, getViolations, markVideoReviewed, unmarkVideoReviewed } from '../services/api'
 
 function VideoDetail() {
     const { videoId } = useParams()
@@ -20,6 +22,8 @@ function VideoDetail() {
     const [violations, setViolations] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [isReviewed, setIsReviewed] = useState(false)
+    const [reviewLoading, setReviewLoading] = useState(false)
 
     const fetchData = async () => {
         try {
@@ -30,6 +34,7 @@ function VideoDetail() {
                 getViolations({ videoId, pageSize: 100 })
             ])
             setVideo(videoRes.data)
+            setIsReviewed(videoRes.data.is_reviewed || false)
             setIndividuals(indsRes.data.items || [])
             setViolations(violsRes.data.items || [])
         } catch (err) {
@@ -133,6 +138,25 @@ function VideoDetail() {
         )
     }
 
+    // Handle marking video as reviewed
+    const handleMarkReviewed = async () => {
+        try {
+            setReviewLoading(true)
+            if (isReviewed) {
+                await unmarkVideoReviewed(videoId)
+                setIsReviewed(false)
+            } else {
+                await markVideoReviewed(videoId)
+                setIsReviewed(true)
+            }
+        } catch (err) {
+            console.error('Failed to update review status', err)
+            alert('Failed to update review status. Make sure all violations have been reviewed.')
+        } finally {
+            setReviewLoading(false)
+        }
+    }
+
     return (
         <>
             <div className="page-header">
@@ -145,12 +169,45 @@ function VideoDetail() {
                             <h1 className="page-title">{video.original_filename}</h1>
                             <div className="flex items-center gap-4 mt-2">
                                 {getStatusBadge(video.status)}
+                                {video.status === 'completed' && (
+                                    isReviewed ? (
+                                        <span className="badge badge-success">
+                                            <CheckCircle size={12} /> Reviewed
+                                        </span>
+                                    ) : (
+                                        <span className="badge badge-warning">
+                                            <Clock size={12} /> Awaiting Review
+                                        </span>
+                                    )
+                                )}
                                 <span className="text-muted text-sm">
                                     Uploaded {new Date(video.uploaded_at).toLocaleString()}
                                 </span>
                             </div>
                         </div>
                     </div>
+                    {/* Mark as Reviewed Button */}
+                    {video.status === 'completed' && (
+                        <button
+                            className={`btn ${isReviewed ? 'btn-secondary' : 'btn-success'}`}
+                            onClick={handleMarkReviewed}
+                            disabled={reviewLoading}
+                        >
+                            {reviewLoading ? (
+                                <RefreshCw size={16} className="spin" />
+                            ) : isReviewed ? (
+                                <>
+                                    <XCircle size={16} />
+                                    Remove from Search
+                                </>
+                            ) : (
+                                <>
+                                    <ClipboardCheck size={16} />
+                                    Mark as Reviewed
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 

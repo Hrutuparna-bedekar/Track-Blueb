@@ -45,6 +45,10 @@ class VideoResponse(BaseModel):
     uploaded_at: datetime
     processed_at: Optional[datetime] = None
     
+    # Review status
+    is_reviewed: Optional[bool] = False
+    reviewed_at: Optional[datetime] = None
+    
     # Computed fields
     total_individuals: Optional[int] = 0
     total_violations: Optional[int] = 0

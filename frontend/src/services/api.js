@@ -39,6 +39,8 @@ export const getVideos = (page = 1, pageSize = 10, status = null) => {
 export const getVideo = (videoId) => api.get(`/videos/${videoId}`)
 export const getVideoStatus = (videoId) => api.get(`/videos/${videoId}/status`)
 export const deleteVideo = (videoId) => api.delete(`/videos/${videoId}`)
+export const markVideoReviewed = (videoId) => api.put(`/videos/${videoId}/review`)
+export const unmarkVideoReviewed = (videoId) => api.put(`/videos/${videoId}/unreview`)
 
 // Violations
 export const getViolations = (params = {}) => {
@@ -76,4 +78,18 @@ export const getIndividual = (videoId, trackId) => api.get(`/individuals/${video
 export const analyzeIndividual = (videoId, trackId) =>
     api.get(`/individuals/${videoId}/${trackId}/analysis`)
 
+// Search
+export const searchVideos = (date, shift = null, violationType = null) => {
+    const params = new URLSearchParams()
+    if (date) params.set('date_str', date)
+    if (shift) params.set('shift', shift)
+    if (violationType) params.set('violation_type', violationType)
+    return api.get(`/search/videos?${params.toString()}`)
+}
+
+export const getVideoSummary = (videoId) => api.get(`/search/videos/${videoId}/summary`)
+
+export const getAvailableDates = () => api.get('/search/dates')
+
 export default api
+
