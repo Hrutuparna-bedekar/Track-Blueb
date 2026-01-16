@@ -23,6 +23,7 @@ TRACKED_EQUIPMENT = {
     'face mask', 'face-mask', 'facemask', 'mask', 'no mask', 'no_mask', 'with mask', 'without mask',
     'boots', 'boot', 'safety boots', 'safety shoes', 'no boots', 'no_boots',
     'person',  # Track persons to associate violations
+    'head', 'face', 'hand', 'hands', 'foot', 'feet', 'shoe', 'shoes',  # Track body parts for prerequisites
 }
 
 # Violation keywords - detections containing these are violations

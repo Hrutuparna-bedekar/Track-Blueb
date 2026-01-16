@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     # AI Pipeline - Detection
     YOLO_MODEL_PATH: str = "ppe_model.pt"  # For video upload analysis
     WEBCAM_MODEL_PATH: str = "old.pt"       # For webcam analysis
-    CONFIDENCE_THRESHOLD: float = 0.55  # Lowered for better goggles detection (was 0.75)
-    IOU_THRESHOLD: float = 0.1  # Non-max suppression IOU threshold
+    CONFIDENCE_THRESHOLD: float = 0.40  # Lowered for better detection of small items (gloves/glasses)
+    IOU_THRESHOLD: float = 0.45  # Increased to prevent suppressing PPE boxes that overlap with Person boxes
     
     # Violation Display Threshold
     # Only violations with confidence >= this value will be saved/displayed
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # Lower threshold = more lenient matching (person can move more between frames)
     # Higher max_frames_missing = keep track alive longer during occlusions/PPE changes
     IOU_TRACKING_THRESHOLD: float = 0.15  # Lower: tolerates more movement between frames
-    IOU_MAX_FRAMES_MISSING: int = 60  # Keep track alive for 2 seconds at 30fps
+    IOU_MAX_FRAMES_MISSING: int = 90  # Keep track alive for 3 seconds at 30fps (better for occlusions)
     
     # Deep SORT Configuration (when TRACKING_METHOD = "cosine")
     MAX_AGE: int = 150  # Keep track alive this many frames without detection
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     DETECTION_INTERVAL_SECONDS: float = 0.0  # 0 = disabled, use FRAME_SKIP instead
     
     # Frame-based detection (used when DETECTION_INTERVAL_SECONDS = 0)
-    FRAME_SKIP: int = 6  # Process every Nth frame
+    FRAME_SKIP: int = 3  # Process every 3rd frame (smoother tracking, ~10fps analysis)
     
     # Video Processing
     SNIPPET_DURATION: int = 5  # Seconds before/after violation for snippet

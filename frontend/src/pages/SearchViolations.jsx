@@ -234,7 +234,8 @@ function SearchViolations() {
                                                         {/* Person Header/Tag */}
                                                         <div style={{
                                                             padding: '14px 18px',
-                                                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                                            background: 'var(--bg-tertiary)',
+                                                            borderBottom: '1px solid var(--border-color)',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'space-between'
@@ -244,20 +245,20 @@ function SearchViolations() {
                                                                     width: 36,
                                                                     height: 36,
                                                                     borderRadius: '50%',
-                                                                    background: 'rgba(255,255,255,0.25)',
+                                                                    background: 'var(--bg-primary)',
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     justifyContent: 'center',
-                                                                    color: 'white',
+                                                                    color: 'var(--accent-primary)',
                                                                     fontWeight: 'bold',
                                                                     fontSize: 16,
-                                                                    border: '2px solid rgba(255,255,255,0.4)'
+                                                                    border: '1px solid var(--border-color)'
                                                                 }}>
                                                                     <Users size={18} />
                                                                 </div>
                                                                 <div>
                                                                     <span style={{
-                                                                        color: 'white',
+                                                                        color: 'var(--text-primary)',
                                                                         fontWeight: 700,
                                                                         fontSize: '1rem',
                                                                         textTransform: 'uppercase',
@@ -266,7 +267,7 @@ function SearchViolations() {
                                                                         Person {index + 1}
                                                                     </span>
                                                                     <div style={{
-                                                                        color: 'rgba(255,255,255,0.8)',
+                                                                        color: 'var(--text-muted)',
                                                                         fontSize: '0.75rem',
                                                                         marginTop: 2
                                                                     }}>
@@ -275,13 +276,13 @@ function SearchViolations() {
                                                                 </div>
                                                             </div>
                                                             <span style={{
-                                                                background: 'rgba(255,255,255,0.25)',
-                                                                color: 'white',
+                                                                background: 'var(--bg-primary)',
+                                                                color: 'var(--text-primary)',
                                                                 padding: '6px 14px',
                                                                 borderRadius: 20,
                                                                 fontWeight: 600,
                                                                 fontSize: '0.85rem',
-                                                                border: '1px solid rgba(255,255,255,0.3)'
+                                                                border: '1px solid var(--border-color)'
                                                             }}>
                                                                 {personViolations.length} violation{personViolations.length !== 1 ? 's' : ''}
                                                             </span>
