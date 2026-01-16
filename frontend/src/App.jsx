@@ -7,6 +7,7 @@ import Videos from './pages/Videos'
 import Violations from './pages/Violations'
 import Individuals from './pages/Individuals'
 import VideoDetail from './pages/VideoDetail'
+import Webcam from './pages/Webcam'
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                         <Route path="videos" element={<Videos />} />
                         <Route path="videos/:videoId" element={<VideoDetail />} />
                         <Route path="violations" element={<Violations />} />
+                        <Route path="webcam" element={<Webcam />} />
                         <Route path="individuals/:videoId" element={<Individuals />} />
                     </Route>
                 </Routes>

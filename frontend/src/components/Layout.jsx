@@ -10,6 +10,7 @@ function Layout() {
     const navItems = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/videos', label: 'Videos' },
+        { path: '/webcam', label: 'Webcam' },
         { path: '/violations', label: 'Violations' },
     ]
 

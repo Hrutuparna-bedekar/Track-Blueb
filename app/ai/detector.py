@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 TRACKED_EQUIPMENT = {
     'helmet', 'hard hat', 'hardhat', 'no helmet', 'no_helmet', 'with helmet', 'without helmet',
     'goggles', 'glasses', 'safety glasses', 'eye protection', 'no goggles', 'no_goggles',
+    'eyes', 'eye',  # Track eyes for No Goggles violation
     'face mask', 'face-mask', 'facemask', 'mask', 'no mask', 'no_mask', 'with mask', 'without mask',
     'boots', 'boot', 'safety boots', 'safety shoes', 'no boots', 'no_boots',
     'person',  # Track persons to associate violations

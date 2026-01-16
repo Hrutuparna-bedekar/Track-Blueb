@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     
     # AI Pipeline - Detection
     YOLO_MODEL_PATH: str = "ppe_model.pt"
-    CONFIDENCE_THRESHOLD: float = 0.75 # Detection confidence (lower = more detections)
+    CONFIDENCE_THRESHOLD: float = 0.55  # Lowered for better goggles detection (was 0.75)
     IOU_THRESHOLD: float = 0.1  # Non-max suppression IOU threshold
     
     # Violation Display Threshold

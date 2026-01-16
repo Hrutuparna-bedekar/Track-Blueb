@@ -33,6 +33,8 @@ BODY_PART_VIOLATIONS = {
     'head': 'No Helmet',      # head visible = no helmet
     'face': 'No Face Mask',   # face visible = no face mask  
     'foot': 'No Safety Boots', # foot visible = no boots
+    'eyes': 'No Goggles',     # eyes visible = no goggles/glasses
+    'eye': 'No Goggles',      # eye visible = no goggles/glasses
 }
 
 # PPE equipment classes that indicate COMPLIANCE (wearing PPE)
@@ -45,7 +47,8 @@ PPE_EQUIPMENT = ['helmet', 'face-mask', 'facemask', 'mask', 'glasses', 'goggles'
 VIOLATION_TO_PPE = {
     'No Helmet': ['helmet'],
     'No Face Mask': ['face-mask', 'facemask', 'mask'],
-    'No Safety Boots': ['shoes', 'boots']
+    'No Safety Boots': ['shoes', 'boots'],
+    'No Goggles': ['glasses', 'goggles', 'safety-glasses', 'safety glasses', 'eye protection']
 }
 
 
@@ -294,9 +297,11 @@ class VideoPipeline:
         
         # If person has worn any of the PPE that would prevent this violation, skip it
         for ppe in required_ppe:
-            if ppe in worn_ppe:
-                logger.debug(f"Skipping {violation_type} for Person-{track_id}: detected wearing {ppe}")
-                return True
+            # Case-insensitive check
+            for worn_item in worn_ppe:
+                if ppe in worn_item or worn_item in ppe:
+                    logger.debug(f"Skipping {violation_type} for Person-{track_id}: detected wearing {worn_item}")
+                    return True
         return False
     
     def _record_person_ppe(self, track_id: int, ppe_type: str):
@@ -609,6 +614,33 @@ class VideoPipeline:
                     self._record_person_ppe(person_tid, cls_name)
                     break  # Only associate with one person
         
+        # Inference-based No Goggles detection:
+        # If person doesn't have goggles/glasses detected, trigger No Goggles violation
+        GOGGLES_PPE_ITEMS = ['glasses', 'goggles', 'safety-glasses', 'safety glasses', 'eye protection']
+        
+        for person_bbox, track_id, person_conf in persons:
+            # Check if this person has goggles/glasses in their worn PPE
+            person_ppe = self.person_worn_ppe.get(track_id, set())
+            has_goggles = False
+            for ppe_item in person_ppe:
+                ppe_lower = ppe_item.lower()
+                for goggles_type in GOGGLES_PPE_ITEMS:
+                    if goggles_type in ppe_lower:
+                        has_goggles = True
+                        break
+                if has_goggles:
+                    break
+            
+            # If no goggles detected, add to violations list (let the main loop process it)
+            # Only add once per person - check captured_violations
+            if not has_goggles:
+                vtype = 'No Goggles'
+                key = (track_id, vtype)
+                if key not in self.captured_violations:
+                    px1, py1, px2, py2 = person_bbox
+                    violations.append(((int(px1), int(py1), int(px2), int(py2)), vtype, 0.85))
+                    logger.info(f"Adding No Goggles violation for Person-{track_id}")
+        
         # THEN Process violations - skip if person has worn corresponding PPE
         for vbox, vtype, conf in violations:
             vx1, vy1, vx2, vy2 = vbox
@@ -629,6 +661,8 @@ class VideoPipeline:
             
             # Draw violation box (RED)
             cv2.rectangle(annotated, (vx1, vy1), (vx2, vy2), (0, 0, 255), 3)
+            if vtype == 'No Goggles':
+                logger.info(f"Drawing No Goggles box at ({vx1},{vy1})-({vx2},{vy2}) for Person-{track_id}")
             
             # Violation label
             label = f"Person-{track_id}: {vtype}"

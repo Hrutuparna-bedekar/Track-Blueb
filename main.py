@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import os
 
 from app.database import init_db
-from app.routers import videos, violations, individuals, dashboard, equipment
+from app.routers import videos, violations, individuals, dashboard, equipment, webcam
 from app.config import settings
 
 # Create upload directories immediately on import (before app starts)
@@ -52,6 +52,7 @@ app.include_router(violations.router, prefix="/api/violations", tags=["Violation
 app.include_router(individuals.router, prefix="/api/individuals", tags=["Individuals"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(equipment.router, tags=["Equipment"])
+app.include_router(webcam.router, prefix="/api/webcam", tags=["Webcam"])
 
 # Serve static files for uploads, snippets, and violation images
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")

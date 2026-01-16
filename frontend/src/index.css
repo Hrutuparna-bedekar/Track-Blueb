@@ -1258,3 +1258,235 @@ textarea.form-input {
     font-size: 2.5rem;
   }
 }
+
+/* ========================================
+   WEBCAM PAGE
+   ======================================== */
+
+.webcam-page {
+  padding: var(--space-8);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.webcam-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+}
+
+.webcam-page .page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  margin-bottom: var(--space-2);
+}
+
+.webcam-page .page-icon {
+  color: var(--accent);
+}
+
+.webcam-page .page-description {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.webcam-controls {
+  flex-shrink: 0;
+}
+
+.webcam-container {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.webcam-main {
+  position: relative;
+}
+
+.video-display {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+}
+
+.webcam-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.webcam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  color: var(--text-muted);
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.webcam-placeholder p {
+  font-size: 1rem;
+}
+
+.webcam-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.stats-card,
+.violations-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.stats-card h3,
+.violations-card h3 {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.webcam-sidebar .stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.webcam-sidebar .stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.webcam-sidebar .stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-muted);
+  color: var(--accent);
+  margin-bottom: 0;
+}
+
+.webcam-sidebar .stat-icon.violation {
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.webcam-sidebar .stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.webcam-sidebar .stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0;
+}
+
+.webcam-sidebar .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.violations-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.no-violations {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.violation-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.violation-item:last-child {
+  margin-bottom: 0;
+}
+
+.violation-badge {
+  background: var(--danger-muted);
+  color: var(--danger);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.violation-person {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.violation-confidence {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-5);
+}
+
+.alert-danger {
+  background: var(--danger-muted);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+@media (max-width: 1024px) {
+  .webcam-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .webcam-sidebar {
+    order: 2;
+  }
+}
