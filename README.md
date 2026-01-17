@@ -11,7 +11,7 @@ An AI-powered video analytics system that automatically detects safety violation
 - ** Privacy-First**: No biometric storage, temporary IDs only
 
 ## Quick Start
-IMP: Need to download a appropriate yolo model and set the config the model name
+IMP: Need to download a appropriate yolo model and set the config according to the model name
 ### Prerequisites
 
 - Python 3.11+
