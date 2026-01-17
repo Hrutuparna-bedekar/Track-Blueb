@@ -18,7 +18,7 @@ An AI-powered video analytics system that automatically detects safety violation
 - Node.js 18+
 - FFmpeg (optional, for video snippets)
 - CUDA/GPU (recommended for faster processing)
-
+-need to download a appropriate yolo model and set the config the model name
 ### Backend Setup
 
 ```bash
@@ -87,29 +87,7 @@ market/
     └── admin_workflow.md
 ```
 
-## API Endpoints
 
-### Videos
-- `POST /api/videos/upload` - Upload video for processing
-- `GET /api/videos` - List all videos
-- `GET /api/videos/{id}` - Get video details
-- `GET /api/videos/{id}/status` - Check processing status
-- `DELETE /api/videos/{id}` - Delete video
-
-### Violations
-- `GET /api/violations` - List violations (with filters)
-- `GET /api/violations/{id}` - Get violation details
-- `POST /api/violations/{id}/review` - Submit review
-- `POST /api/violations/bulk-review` - Bulk review
-
-### Individuals
-- `GET /api/individuals/{video_id}` - List tracked individuals
-- `GET /api/individuals/{video_id}/{track_id}` - Get individual profile
-- `GET /api/individuals/{video_id}/{track_id}/analysis` - Pattern analysis
-
-### Dashboard
-- `GET /api/dashboard/stats` - Overall statistics
-- `GET /api/dashboard/repeat-offenders` - High-risk individuals
 
 ## Configuration
 
@@ -131,22 +109,7 @@ SNIPPETS_DIR = "snippets"
 MAX_UPLOAD_SIZE = 500 * 1024 * 1024  # 500MB
 ```
 
-## Documentation
 
-- [Tracking Logic](docs/tracking_logic.md) - How Deep SORT tracking works
-- [Privacy Handling](docs/privacy_handling.md) - Privacy-first design principles
-- [Admin Workflow](docs/admin_workflow.md) - Step-by-step admin guide
-
-## Technology Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend | Python, FastAPI, SQLAlchemy |
-| Database | SQLite (async) |
-| AI/ML | Ultralytics YOLO, Deep SORT |
-| Video | OpenCV, FFmpeg |
-| Frontend | React, Vite, Axios |
-| Styling | Custom CSS with dark theme |
 
 ## License
 
