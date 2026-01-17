@@ -11,14 +11,14 @@ An AI-powered video analytics system that automatically detects safety violation
 - ** Privacy-First**: No biometric storage, temporary IDs only
 
 ## Quick Start
-
+IMP!:need to download a appropriate yolo model and set the config the model name
 ### Prerequisites
 
 - Python 3.11+
 - Node.js 18+
 - FFmpeg (optional, for video snippets)
 - CUDA/GPU (recommended for faster processing)
--need to download a appropriate yolo model and set the config the model name
+  
 ### Backend Setup
 
 ```bash
