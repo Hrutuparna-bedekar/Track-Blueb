@@ -4,11 +4,11 @@ An AI-powered video analytics system that automatically detects safety violation
 
 ## Features
 
-- **🎯 Violation Detection**: YOLO-based detection for safety violations (PPE, restricted zones)
-- **👤 Individual Tracking**: Deep SORT multi-object tracking with session-scoped IDs
-- **📊 Aggregation**: Per-individual violation history and pattern analysis
-- **✅ Admin Review**: Confirm/reject workflow for human-in-the-loop validation
-- **🔒 Privacy-First**: No biometric storage, temporary IDs only
+- ** Violation Detection**: YOLO-based detection for safety violations (PPE, restricted zones)
+- ** Individual Tracking**: Deep SORT multi-object tracking with session-scoped IDs
+- ** Aggregation**: Per-individual violation history and pattern analysis
+- ** Admin Review**: Confirm/reject workflow for human-in-the-loop validation
+- ** Privacy-First**: No biometric storage, temporary IDs only
 
 ## Quick Start
 
